@@ -300,6 +300,19 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 </head>
 <body>
 <style>
+.ticker{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:-4px 0 12px;padding-bottom:2px}
+.ticker::-webkit-scrollbar{display:none}
+.tk{flex:none;display:grid;grid-template-columns:auto auto;column-gap:8px;align-items:baseline;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:5px 10px;font-size:12px;text-align:left}
+.tk b{font-weight:800;letter-spacing:.04em}
+.tk span{font-size:12px}
+.tk i{grid-column:1/3;font-style:normal;font-size:11px;font-weight:700}
+.tk.up i{color:var(--good)} .tk.dn i{color:var(--bad)}
+.tk.held{border-color:var(--gold-lo);box-shadow:inset 0 0 0 1px rgba(214,176,100,.35)}
+.tk.flash-up{animation:fup 1s ease-out} .tk.flash-dn{animation:fdn 1s ease-out}
+@keyframes fup{0%{background:rgba(52,201,138,.45)}100%{background:var(--surface)}}
+@keyframes fdn{0%{background:rgba(240,101,82,.45)}100%{background:var(--surface)}}
+.mkrow{display:grid;grid-template-columns:40px minmax(0,1fr) auto 64px!important;cursor:pointer}
+.mkrow:hover{background:var(--surface2)!important}
 /* additions for the rulebook version: 5-column setup rows, open-offer box, fast-track board */
 .prow{grid-template-columns:16px minmax(0,1fr) minmax(0,.6fr) minmax(0,1fr) minmax(0,1fr)}
 @media (max-width:640px){.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,1fr)}.prow .job,.prow .drm{grid-column:2/4}}
@@ -554,7 +567,7 @@ const loanPay=p=>sum(p.loans.map(l=>l.payment));
 const totalExp=p=>p.tax+p.other+p.children*p.childCost+loanPay(p);
 const passive=p=>sum(p.assets.map(a=>a.income||0));
 const cashflow=p=>p.salary+passive(p)-totalExp(p);
-const assetValue=a=>a.kind==="stock"?a.qty*G.prices[a.ticker]:a.kind==="gold"?a.qty*G.gold:a.cost;
+const assetValue=a=>a.kind==="stock"?a.qty*livePrice(a.ticker):a.kind==="gold"?a.qty*livePrice("GOLD"):a.cost;
 const netWorth=p=>p.cash+sum(p.assets.map(assetValue))-sum(p.loans.map(l=>l.principal));
 const mortOf=(p,a)=>p.loans.find(l=>l.assetId===a.id);
 const dreamPrice=p=>DREAMS[p.dream].price*(1+(G.dreamBump?.[p.dream]||0));
@@ -648,7 +661,92 @@ function coinBurst(n){
     c.style.left=x+"px";c.style.top=y+"px";c.style.setProperty("--dx",(tx-x)+"px");c.style.setProperty("--dy",(ty-y)+"px");c.style.animationDelay=(i*45)+"ms";
     document.body.appendChild(c);setTimeout(()=>c.remove(),1000+i*45);}
 }
-function trackPrice(tk,price){(G.hist=G.hist||{})[tk]=[...(G.hist[tk]||[tk==="GOLD"?3600:TICKERS[tk].base]),price].slice(-30);}
+function trackPrice(){} // price history now comes from the live market below
+
+/* ================= live market =================
+   Prices move every 4 seconds on their own: small random steps, sometimes a sudden jump of 8–30%, and a slow pull back
+   toward each asset's usual price. Every device computes the same path from the game's seed and the clock, so online
+   players see identical prices without sending any data. Cards and market events set a new anchor price. */
+const TICK_MS=4000, LIVE=["NOVA","GRNR","BLUC","MEDX","DIVY","BTC","ETH","GOLD"];
+const VOL={NOVA:.022,GRNR:.014,BLUC:.03,MEDX:.02,DIVY:.004,BTC:.035,ETH:.045,GOLD:.006};
+const JUMP={NOVA:.18,GRNR:.12,BLUC:.25,MEDX:.2,DIVY:.03,BTC:.28,ETH:.32,GOLD:.06};
+const baseOf=tk=>tk==="GOLD"?3600:TICKERS[tk].base;
+const nowTick=()=>Math.floor(Date.now()/TICK_MS);
+function rng(seed,t,tk){let h=(seed^Math.imul(t,0x9E3779B1)^Math.imul(tk.charCodeAt(0)*31+tk.charCodeAt(1)*7+tk.charCodeAt(2),0x85EBCA6B))>>>0;
+  return ()=>{h=(h+0x6D2B79F5)>>>0;let x=h;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return ((x^(x>>>14))>>>0)/4294967296;};}
+function stepPrice(tk,p,t){
+  const r=rng(G.seed||1,t,tk),z=(r()+r()+r()-1.5)*2,jump=r()<.03?(r()<.5?-1:1)*JUMP[tk]*(.45+r()*.65):0;
+  const pull=-.015*Math.log(p/baseOf(tk));
+  return Math.max(tk==="GOLD"?500:.5,p*Math.exp(pull+VOL[tk]*z+jump));
+}
+const anchorOf=tk=>({p:tk==="GOLD"?G.gold:G.prices[tk],t:(G.anchorT||{})[tk]??nowTick()});
+const liveCache={};
+function livePrice(tk,at){
+  if(!G)return baseOf(tk);
+  const a=anchorOf(tk),T=at??nowTick(),key=`${G.seed}:${tk}:${a.p}:${a.t}`;
+  let c=liveCache[tk];
+  if(!c||c.key!==key||c.t>T)c=liveCache[tk]={key,t:a.t,p:a.p};
+  if(T-c.t>20000)c.t=T-20000; // ponytail: an idle game older than ~22 hours restarts its walk from the anchor
+  while(c.t<T){c.t++;c.p=stepPrice(tk,c.p,c.t);}
+  return Math.round(c.p*(c.p<20?100:1))/(c.p<20?100:1);
+}
+function liveSeries(tk,n=30){const T=nowTick(),a=anchorOf(tk);const out=[];for(let t=Math.max(a.t,T-n+1);t<=T;t++)out.push(livePrice(tk,t));livePrice(tk);return out.length>1?out:[a.p,a.p];}
+// freeze live prices into anchors before a card or event changes them, so the change starts from today's price
+function settlePrices(){if(!G)return;const T=nowTick();G.anchorT=G.anchorT||{};LIVE.forEach(tk=>{const p=livePrice(tk);if(tk==="GOLD")G.gold=p;else G.prices[tk]=p;G.anchorT[tk]=T;});}
+const pctMove=(tk,ticks=15)=>{const s=liveSeries(tk,ticks+1);return (s[s.length-1]-s[0])/s[0]*100;};
+const tkName=tk=>tk==="GOLD"?"Gold":TICKERS[tk].name;
+const canTrade=()=>G&&!cur().bot&&isActor()&&canAct()&&!fast(cur())&&!cur().out;
+function tickerHTML(){
+  return LIVE.map(tk=>{const p=livePrice(tk),m=pctMove(tk),last=pctMove(tk,1),held=(G.players[VIEW]||G.players[0]).assets.some(a=>(a.ticker||(a.kind==="gold"?"GOLD":""))===tk);
+    return `<button class="tk ${m>=0?"up":"dn"}${Math.abs(last)>=.6?(last>0?" flash-up":" flash-dn"):""}${held?" held":""}" data-tk="${tk}" title="${tkName(tk)}: ${fmt(p)}"><b>${tk}</b><span class="num">${fmt(p)}</span><i class="num">${m>=0?"▲":"▼"} ${Math.abs(m).toFixed(1)}%</i></button>`;}).join("");
+}
+// trade any listed asset at the live price on your own turn (1% spread each way)
+function marketModal(tk){
+  const p=cur(),price=livePrice(tk),buy=Math.round(price*1.01*100)/100,sell=Math.round(price*.99*100)/100,crypto=TICKERS[tk]?.crypto;
+  const held=p.assets.find(a=>tk==="GOLD"?a.kind==="gold":a.kind==="stock"&&a.ticker===tk),dec=!!crypto;
+  nextArt=tk==="GOLD"?"gold":tk==="BTC"?"bitcoin":tk==="ETH"?"ethereum":"stocks";
+  const def=dec?Math.max(.01,Math.floor(p.cash*.1/buy*100)/100):Math.max(1,Math.floor(p.cash*.1/buy));
+  modal({kicker:"Stock market · live",icon:"market",tone:"#0f6b4a",title:`${tkName(tk)} · ${tk}`,silent:1,
+    body:`<div class="sh" style="margin-top:0">Last 2 minutes</div>${sparkSVG(liveSeries(tk,30),56)}
+      ${facts([["Price now",fmt(price),pctMove(tk)>=0?"pos":"neg","hl"],["1-minute change",`${pctMove(tk)>=0?"+":""}${pctMove(tk).toFixed(2)}%`,pctMove(tk)>=0?"pos":"neg"],["You buy at",fmt(buy)],["You sell at",fmt(sell)],["You own",held?`${held.qty} · worth ${fmt(assetValue(held))} (paid ${fmt(held.cost)})`:"none"],["Your cash",fmt(p.cash)]])}
+      <label class="sh" for="qty">${dec?"Coins to buy (decimals allowed)":tk==="GOLD"?"Ounces to buy":"Shares to buy"}</label><input class="field num" id="qty" type="number" min="${dec?.01:1}" step="${dec?.01:1}" value="${def}"><div class="note" id="qtyCost"></div>
+      <p class="note">Prices move every few seconds. Big jumps happen. This is a game, not investment advice.</p>`,
+    actions:[{label:"Buy",primary:1,keep:1,fn:()=>{const q=dec?Math.floor(+$("#qty").value*100)/100:Math.floor(+$("#qty").value);if(!(q>0))return toast("Enter a quantity");
+        const px=Math.round(livePrice(tk)*1.01*100)/100,cost=Math.round(q*px);if(cost>p.cash)return toast("Not enough cash");
+        if(held){held.qty=Math.round((held.qty+q)*100)/100;held.cost+=cost;if(TICKERS[tk]?.div)held.income=Math.round(held.qty*TICKERS[tk].div);}
+        else p.assets.push(tk==="GOLD"?{id:uid(),kind:"gold",name:"Gold coins",qty:q,cost,income:0,img:"gold"}:{id:uid(),kind:"stock",ticker:tk,name:`${tkName(tk)} (${tk})`,qty:q,cost,income:TICKERS[tk].div?Math.round(q*TICKERS[tk].div):0,img:artOf({ticker:tk,kind:"stock"})});
+        p.cash-=cost;log(`${p.name} bought ${q} ${tk} at ${fmt(px)}`);sfx.coin();buzz(20);closeModal();afterChange();}},
+      ...(held?[{label:`Sell all (${fmt(held.qty*livePrice(tk)*.99)})`,fn:()=>{const v=Math.round(held.qty*livePrice(tk)*.99),gain=v-held.cost;
+        p.cash+=v;p.assets=p.assets.filter(a=>a!==held);log(`${p.name} sold ${tk} for ${fmt(v)} (${gain>=0?"+":""}${fmt(gain)})`);
+        gain>=0?(sfx.win(),coinBurst(14)):sfx.bad();buzz(gain>=0?[20,40,20]:60);toast(`${gain>=0?"Profit":"Loss"}: ${gain>=0?"+":""}${fmt(gain)}`);afterChange();}}]:[]),
+      {label:"Close",fn:()=>{}}]});
+  const upd=()=>{const q=+$("#qty")?.value||0;const t=$("#qtyCost");if(t)t.textContent=`Total: ${fmt(q*livePrice(tk)*1.01)}`;};
+  $("#qty").addEventListener("input",upd);upd();
+}
+function tradeModal0(){ // market overview
+  const p=cur();
+  modal({kicker:"Stock market · live",icon:"market",tone:"#0f6b4a",title:"Trade at live prices",silent:1,
+    body:`<p>Prices update every 4 seconds. Tap an asset to buy or sell it.</p>${LIVE.map(tk=>{const m=pctMove(tk),held=p.assets.find(a=>tk==="GOLD"?a.kind==="gold":a.ticker===tk);
+      return `<button class="asset mkrow" data-mk="${tk}" style="width:100%;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.05);text-align:left;color:inherit"><div class="thumb">${svg("market")}</div><div style="min-width:0"><b>${tkName(tk)}</b> <span class="muted">${tk}</span><div class="meta">${held?`You own ${held.qty} · ${fmt(assetValue(held))}`:"Not owned"}</div></div><span class="num">${fmt(livePrice(tk))}</span><span class="num ${m>=0?"pos":"neg"}">${m>=0?"+":""}${m.toFixed(1)}%</span></button>`;}).join("")}`,
+    actions:[{label:"Close",primary:1,fn:()=>{}}],
+    onBody:e=>{const b=e.target.closest("[data-mk]");if(b){closeModal();marketModal(b.dataset.mk);}}});
+}
+// every tick: refresh the ticker, the ledger and the Empire screen, and celebrate big moves on what you own
+let lastTickSeen=0;
+setInterval(()=>{
+  if(!G)return;
+  const T=nowTick();if(T===lastTickSeen)return;lastTickSeen=T;
+  const v=G.players[VIEW]||G.players[0];
+  if(route==="play"){
+    const tkEl=$("#ticker");if(tkEl)tkEl.innerHTML=tickerHTML();
+    const led=$("aside.ledger");if(led){const top=led.scrollTop;led.innerHTML=`<div class="sheet-grab"><b>Finances</b><button class="btn sm" data-a="sheet">Close</button></div>${ledgerHTML(v)}`;led.scrollTop=top;}
+  }else if(route==="empire")render();
+  for(const a of v.assets){const tk=a.kind==="gold"?"GOLD":a.ticker;if(!tk)continue;
+    const mv=pctMove(tk,1);
+    if(Math.abs(mv)>=6){const val=assetValue(a);
+      toast(`${mv>0?"🚀":"📉"} ${tk} ${mv>0?"+":""}${mv.toFixed(1)}% · your ${tk} is now ${fmt(val)}`);
+      if(mv>0){sfx.coin();coinBurst(8);}else sfx.bad();buzz(mv>0?[15,30,15]:80);break;}}
+},1000);
 function sparkSVG(vals,h=44){
   if(!vals||vals.length<2)return "";
   const mn=Math.min(...vals),mx=Math.max(...vals),w=200,sp=mx-mn||1,pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-4-(v-mn)/sp*(h-8)).toFixed(1)}`);
@@ -833,25 +931,28 @@ function tradeModal(p,{title,body,price,unit,held,qtyQ,def,step,onBuy,botBuy,sha
   $("#qty").addEventListener("input",upd);upd();
 }
 function stockModal(p,d){
+  settlePrices();
   G.prices[d.ticker]=d.price;trackPrice(d.ticker,d.price);nextArt=artOf(d);
   openOffer({type:"ticker",ticker:d.ticker,price:d.price,title:`${TICKERS[d.ticker].name} at ${fmt(d.price)}`});
   const tk=TICKERS[d.ticker],held=p.assets.find(a=>a.kind==="stock"&&a.ticker===d.ticker);
   const note=tk.crypto?`${d.ratio<.8?"Crypto sold off hard this week.":d.ratio>1.5?"Crypto is in a hype rally.":"Prices are calm for once."} It has traded around ${fmt(tk.base)}. Swings of 50% happen. No income.`
     :tk.div?`Pays ${fmt(tk.div*100)} per 100 shares every month, about 4% a year.`:`${d.ratio<.8?"Shares dropped after a weak earnings report.":d.ratio>1.3?"Strong earnings pushed the stock up.":"The stock trades near its usual range."} Trading range: ${fmt(tk.base*.4)}–${fmt(tk.base*1.8)}. No dividend.`;
   tradeModal(p,{title:`${tk.name} · ${d.ticker}`,price:d.price,unit:tk.crypto?"/ coin":"/ share",held,qtyQ:tk.crypto?"Coins to buy (decimals allowed)":"Shares to buy",def:tk.crypto?.1:100,step:tk.crypto?.01:10,dec:!!tk.crypto,
-    body:`<p>${note}</p><div class="sh">Recent prices</div>${sparkSVG(G.hist[d.ticker])}`,
+    body:`<p>${note}</p><div class="sh">Recent prices</div>${sparkSVG(liveSeries(d.ticker))}`,
     botBuy:tk.div?true:d.ratio<(tk.crypto?.6:.7),share:tk.div?.25:tk.crypto?.08:.3,
     onBuy:(q,cost)=>{if(held){held.qty=Math.round((held.qty+q)*100)/100;held.cost+=cost;held.income=tk.div?Math.round(held.qty*tk.div):0;}else p.assets.push({id:uid(),kind:"stock",ticker:d.ticker,name:`${tk.name} (${d.ticker})`,qty:q,cost,income:tk.div?Math.round(q*tk.div):0,img:artOf(d)});p.cash-=cost;log(`${p.name} bought ${q} ${d.ticker} (${fmt(cost)})`);}});
 }
 function goldModal(p,d){
+  settlePrices();
   G.gold=d.price;nextArt="gold";trackPrice("GOLD",d.price);
   openOffer({type:"gold",price:d.price,title:`Gold at ${fmt(d.price)}/oz`});
   const held=p.assets.find(a=>a.kind==="gold");
-  tradeModal(p,{title:"Gold coins · 1 oz",price:d.price,unit:"/ oz",held,qtyQ:"Ounces to buy",def:2,step:1,body:`<p>Gold pays nothing, but it tends to hold value when currencies weaken.</p><div class="sh">Recent prices</div>${sparkSVG(G.hist.GOLD)}`,
+  tradeModal(p,{title:"Gold coins · 1 oz",price:d.price,unit:"/ oz",held,qtyQ:"Ounces to buy",def:2,step:1,body:`<p>Gold pays nothing, but it tends to hold value when currencies weaken.</p><div class="sh">Recent prices</div>${sparkSVG(liveSeries("GOLD"))}`,
     botBuy:d.price<3200,share:.1,
     onBuy:(q,cost)=>{if(held){held.qty+=q;held.cost+=cost;}else p.assets.push({id:uid(),kind:"gold",name:"Gold coins",qty:q,cost,income:0,img:"gold"});p.cash-=cost;log(`${p.name} bought ${q} oz of gold (${fmt(cost)})`);}});
 }
 function marketCard(p,d){
+  settlePrices();
   const mk=DECK_INFO.market;
   nextArt=({vacancy:"vacancy",repair:"roof",bizshift:d.mult<1?"recession":"tourism",split:"stocks",crash:"crash",goldup:"gold",cryptocrash:"bitcoin",buyer:"handshake"})[d.kind]||"";
   const show=(title,text,tone)=>modal({kicker:mk.name,icon:mk.icon,tone:tone||mk.color,title,body:`<p>${text}</p>`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});
@@ -1090,6 +1191,7 @@ function startGame(){
 }
 function newGame(players){
   G={v:3,players,turn:0,phase:"roll",dice:[1],seq:0,rollId:0,rolls:0,prices:Object.fromEntries(Object.entries(TICKERS).map(([k,v])=>[k,v.base])),gold:3600,log:[],msg:null,offer:null,ftOwn:{},dreamBump:{},winner:null,
+     seed:(Math.random()*2**31)|0,anchorT:Object.fromEntries(LIVE.map(k=>[k,nowTick()])),
      decks:Object.fromEntries(Object.keys(DECKS).map(k=>[k,shuffle([...DECKS[k].keys()])]))};
   players.forEach(p=>log(`${p.name}${p.bot?" (bot)":""} starts as ${/^[aeiou]/i.test(p.prof)?"an":"a"} ${p.prof.toLowerCase()} with ${fmt(p.cash)}. Dream: ${DREAMS[p.dream].name}.`,p.id));
   const s=store.get(STATS,{played:0,wins:[]});s.played++;store.set(STATS,s);
@@ -1114,6 +1216,7 @@ function playHTML(){
   const track=p.track||"rat";
   return `<div class="hud"><button class="btn sm menu-m" data-route="home">Menu</button>${ONLINE?`<div class="chip on" title="Room code"><b>Room</b><span class="c" style="color:var(--ink);letter-spacing:.12em">${ONLINE.code}</span></div>`:""}${G.players.map((q,k)=>`<div class="chip ${k===G.turn?"on":""}"><span class="dot" style="background:${PCOL[k]}"></span><b>${esc(q.name)}</b>${q.bot?`<span class="tag">BOT</span>`:""}${ONLINE&&q.uid===NET.uid?`<span class="tag">YOU</span>`:""}${fast(q)?`<span class="track">FAST TRACK</span>`:""}${q.out?`<span class="tag">OUT</span>`:""}<span class="c">${fmt(q.cash)}</span>${q.won?`<span class="tag free">WINNER</span>`:""}</div>`).join("")}
     <span class="spacer"></span>${ONLINE?`<button class="btn sm" data-go="leave">${confirmKey==="leave"?"Click again to leave":"Leave room"}</button>`:""}<button class="btn sm" data-a="snd" aria-pressed="${prefs.sound}">${prefs.sound?"Sound on":"Sound off"}</button><button class="btn sm" data-a="fx" aria-pressed="${prefs.fx}">${prefs.fx?"3D view":"Flat view"}</button></div>
+  <div class="ticker" id="ticker" aria-label="Live market prices">${tickerHTML()}</div>
   <div class="play">
     <div class="stagewrap">
       <div class="stage ${prefs.fx?"fx":""}">${boardHTML(G,track)}</div>
@@ -1141,7 +1244,7 @@ function ledgerHTML(v){
   const pas=passive(v),ex=totalExp(v),cf=cashflow(v),pct=Math.min(100,ex?pas/ex*100:0);
   const inc=[[`Salary <small>(${esc(v.prof)})</small>`,v.salary],...v.assets.filter(a=>a.income).map(a=>[esc(a.name),a.income])];
   const exps=[["Taxes",v.tax],...v.loans.filter(l=>l.payment>0).map(l=>[esc(l.name),l.payment]),["Other expenses",v.other],...(v.children?[[`Children <small>(${v.children} × ${fmt(v.childCost)})</small>`,v.children*v.childCost]]:[])];
-  const assets=v.assets.length?v.assets.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div style="overflow-wrap:anywhere">${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(G.prices[a.ticker])}`:a.kind==="gold"?`${a.qty} oz × ${fmt(G.gold)}`:a.down?`cost ${fmt(a.cost)} · down ${fmt(a.down)}`:`cost ${fmt(a.cost)}`}</div></div><span class="num" style="font-size:12.5px">${a.income?`+${fmt(a.income)}`:fmt(assetValue(a))}</span><span></span></div>`).join(""):`<div class="empty">No assets yet. Land on Opportunity and draw a deal.</div>`;
+  const assets=v.assets.length?v.assets.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div style="overflow-wrap:anywhere">${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(livePrice(a.ticker))}`:a.kind==="gold"?`${a.qty} oz × ${fmt(livePrice("GOLD"))}`:a.down?`cost ${fmt(a.cost)} · down ${fmt(a.down)}`:`cost ${fmt(a.cost)}`}</div></div><span class="num" style="font-size:12.5px">${a.income?`+${fmt(a.income)}`:fmt(assetValue(a))}</span><span></span></div>`).join(""):`<div class="empty">No assets yet. Land on Opportunity and draw a deal.</div>`;
   const liab=v.loans.length?v.loans.map(l=>row(esc(l.name),fmt(l.principal))).join(""):`<div class="empty">No debt.</div>`;
   return `${tabs}<div class="lsec">${head}
     <div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div>
@@ -1157,7 +1260,7 @@ function ledgerHTML(v){
     ${row("Monthly cash flow",(cf>=0?"+":"")+fmt(cf),"total")}</div>
   <div class="lsec"><div class="lt"><span>Balance sheet</span><span>cash flow</span></div>
     <div class="sh">Assets</div>${assets}<div class="sh">Liabilities</div>${liab}${row("Net worth",fmt(netWorth(v)),"total")}</div>
-  ${mine?`<div class="lsec inl"><button class="btn" data-a="bank">Bank: loans & debts</button></div>`:""}
+  ${mine?`<div class="lsec inl"><button class="btn primary" data-a="trade">Stock market</button><button class="btn" data-a="bank">Bank: loans & debts</button></div>`:""}
   ${logHTML}`;
 }
 function chartSVG(vals){
@@ -1181,7 +1284,7 @@ function empireHTML(){
     <div class="row"><span class="l muted">Cash flow</span><span class="r pos">+${fmt(a.income)}/mo</span></div>
     ${l?`<div class="row"><span class="l muted">Mortgage</span><span class="r">${fmt(l.principal)}</span></div>`:""}</div></div>`;}).join(""):`<p class="muted">No properties or businesses yet. Land on Opportunity to draw a deal.</p>`;
   const ftGal=(v.ftBiz||[]).map(n=>{const b=FT_BIZ.find(x=>x.name===n);return `<div class="ecard"><div class="pic">${svg("big")}<span>Fast Track</span></div><div class="info"><b>${esc(n)}</b><div class="row"><span class="l muted">Price</span><span class="r">${fmt(b.price)}</span></div><div class="row"><span class="l muted">CASHFLOW Day</span><span class="r pos">+${fmt(b.cf)}</span></div></div></div>`;}).join("");
-  const pf=port.length?port.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div>${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(G.prices[a.ticker])}`:a.kind==="gold"?`${a.qty} oz × ${fmt(G.gold)}`:`5% a year`}</div></div>${sparkSVG(a.kind==="stock"?G.hist?.[a.ticker]:a.kind==="gold"?G.hist?.GOLD:null,36)||"<span></span>"}<span class="num ${assetValue(a)>=a.cost?"pos":"neg"}">${fmt(assetValue(a))}</span></div>`).join(""):`<p class="muted" style="margin:0">No stocks, crypto, gold or CDs yet.</p>`;
+  const pf=port.length?port.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div>${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(livePrice(a.ticker))}`:a.kind==="gold"?`${a.qty} oz × ${fmt(livePrice("GOLD"))}`:`5% a year`}</div></div>${sparkSVG(a.kind==="stock"?liveSeries(a.ticker):a.kind==="gold"?liveSeries("GOLD"):null,36)||"<span></span>"}<span class="num ${assetValue(a)>=a.cost?"pos":"neg"}">${fmt(assetValue(a))}</span></div>`).join(""):`<p class="muted" style="margin:0">No stocks, crypto, gold or CDs yet.</p>`;
   const pas=passive(v),ex=totalExp(v);
   return `<div class="eyebrow">Empire</div><h1 style="font-size:40px;margin:4px 0 12px">${v.name==="You"?"Your empire":`${esc(v.name)}'s empire`}</h1>${tabs}
   <div class="emp-head"><div class="card"><div class="sh" style="margin-top:0">Net worth</div><div class="networth">${fmt(netWorth(v))}</div>
@@ -1495,9 +1598,10 @@ document.addEventListener("click",e=>{
   if(go==="abandon")return twoClick("abandon",()=>{if(ONLINE)leaveRoom();G=null;store.set(SAVE,null);render();});
   if(go==="resetStats")return twoClick("resetStats",()=>{store.set(STATS,{played:0,wins:[]});render();});
   const a=b.dataset.a;
-  if((isBot()||!isActor())&&(b.dataset.roll||["next","skip","bank"].includes(a)))return;
+  if((isBot()||!isActor())&&(b.dataset.roll||["next","skip","bank","trade"].includes(a)))return;
   if(b.dataset.roll)return roll(+b.dataset.roll);
-  if(a==="next")nextTurn();else if(a==="skip")skipTurn();else if(a==="bank")bankModal();
+  if(b.dataset.tk){if(canTrade())marketModal(b.dataset.tk);else toast(`${tkName(b.dataset.tk)}: ${fmt(livePrice(b.dataset.tk))}. You can trade on your own turn.`);return;}
+  if(a==="next")nextTurn();else if(a==="skip")skipTurn();else if(a==="bank")bankModal();else if(a==="trade")tradeModal0();
   else if(a==="fx"){prefs.fx=!prefs.fx;savePrefs();render();}
   else if(a==="snd"){prefs.sound=!prefs.sound;savePrefs();render();}
 });
