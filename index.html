@@ -665,7 +665,7 @@ function bankrupt(p){
 }
 function enterFastTrack(p){
   p.track="fast";p.pos=0;p.ftIncome=Math.round(passive(p)*100);p.ftTarget=p.ftIncome+50000;p.cash=p.ftIncome;p.ftCharity=false;p.charity=0;
-  log(`${p.name} escaped the rat race! CASHFLOW Day income: ${fmt(p.ftIncome)}`,p.id);
+  log(`${p.name} escaped the Matrix! CASHFLOW Day income: ${fmt(p.ftIncome)}`,p.id);
   const s=store.get(STATS,{played:0,wins:[],escapes:[]});(s.escapes=s.escapes||[]).push({name:p.name,prof:p.prof,bot:p.bot,months:p.months,date:new Date().toISOString().slice(0,10)});store.set(STATS,s);
 }
 function declareWinner(p,how){
@@ -1177,11 +1177,24 @@ function bankModal(){
       if(btn.dataset.payoff){const l=p.loans.find(x=>x.id===btn.dataset.payoff);if(l)payOffDebt(p,l);}
       save();bankModal();}});
 }
+// green "digital rain" over the screen for a few seconds when someone escapes the rat race
+function matrixRain(){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const c=document.createElement("canvas");c.style.cssText="position:fixed;inset:0;z-index:49;pointer-events:none;opacity:.85;transition:opacity 1s";
+  document.body.appendChild(c);const x=c.getContext("2d"),W=c.width=innerWidth,H=c.height=innerHeight,fs=16,cols=Math.ceil(W/fs),y=Array(cols).fill(0).map(()=>Math.random()*-40);
+  const chars="$01アイウエオカキクケコ¥€₿$$$0101",t0=performance.now();
+  (function frame(t){
+    x.fillStyle="rgba(0,8,2,.12)";x.fillRect(0,0,W,H);x.font=`${fs}px monospace`;
+    y.forEach((v,i)=>{x.fillStyle=Math.random()<.05?"#d9ffe0":"#22e06a";x.fillText(chars[Math.floor(Math.random()*chars.length)],i*fs,v*fs);y[i]=v*fs>H&&Math.random()>.97?0:v+1;});
+    if(t-t0<3800)requestAnimationFrame(frame);else{c.style.opacity=0;setTimeout(()=>c.remove(),1000);}
+  })(t0);
+  [262,330,392,523,659,784].forEach((f,i)=>tone(f,.35,"sawtooth",.04,i*.09));
+}
 function showWin(w){
   const p=G.players[w.id];sfx.win();
-  if(w.how==="escape")return modal({kicker:"Out of the rat race",icon:"dream",tone:"#7b5cd6",title:`${esc(p.name)} escaped the rat race!`,silent:1,
-    body:`<p>Passive income is now bigger than total expenses. ${esc(p.name)} moves to the Fast Track.</p>${facts([["CASHFLOW Day income",fmt(p.ftIncome),"pos"],["Starting cash",fmt(p.cash)],["To win","Buy your Dream, or reach "+fmt(p.ftTarget)+" CASHFLOW Day income","","hl"],["Dream",`${DREAMS[p.dream].name} · ${fmt(dreamPrice(p))}`]])}`,
-    actions:[{label:"Continue",primary:1,fn:()=>{if(pendingWins.length)showWin(pendingWins.shift());else tickBot();}}],bot:0});
+  if(w.how==="escape"){matrixRain();return modal({kicker:"Out of the rat race",icon:"dream",tone:"#0b7a3a",title:p===alarmPlayer()?"🟢 You escaped the Matrix!":`🟢 ${esc(p.name)} escaped the Matrix!`,silent:1,
+    body:`<p style="color:var(--ink);font-size:15px">${p===alarmPlayer()?"You":esc(p.name)} broke out of the inner circle. Passive income now pays for every expense, so the paycheck is optional. Welcome to the Fast Track.</p>${facts([["CASHFLOW Day income",fmt(p.ftIncome),"pos"],["Starting cash",fmt(p.cash)],["Dream",`${DREAMS[p.dream].name} · ${fmt(dreamPrice(p))}`]])}<p style="color:var(--gold-hi);font-weight:700">To win: buy your Dream, or raise CASHFLOW Day income to ${fmt(p.ftTarget)}.</p>`,
+    actions:[{label:"Enter the Fast Track",primary:1,fn:()=>{if(pendingWins.length)showWin(pendingWins.shift());else tickBot();}}],bot:0});}
   modal({kicker:"Winner",icon:"dream",tone:"var(--gold-lo)",title:`${esc(p.name)} wins!`,silent:1,body:`<p>${esc(p.name)} ${esc(w.how)}.</p>${facts([["Net worth",fmt(netWorth(p))],["Time",yrs(p.months),"","hl"]])}<p>You can keep playing.</p>`,
     actions:[{label:"Continue",primary:1,fn:()=>{if(pendingWins.length)showWin(pendingWins.shift());else tickBot();}}],bot:0});
 }
