@@ -338,7 +338,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const K=1e3, SAVE="mf.game.v3", PREF="mf.prefs.v1", STATS="mf.stats.v1", BANK_RATE=.10, MAX_KIDS=3;
+const K=1e3, SAVE="mf.game.v3", PREF="mf.prefs.v1", STATS="mf.stats.v1", BANK_RATE=.02, MAX_KIDS=3;
 const uid=()=>Math.random().toString(36).slice(2,9);
 const rand=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -347,6 +347,7 @@ const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 function fmt(n){const a=Math.abs(n),s=n<0?"−":"";
+  if(a<100&&a%1)return s+"$"+a.toFixed(2);
   if(a>=1e6)return s+"$"+(a/1e6).toFixed(2).replace(/\.?0+$/,"")+"M";
   if(a>=1e5)return s+"$"+Math.round(a/1e3)+"k";
   return s+"$"+Math.round(a).toLocaleString("en-US");}
@@ -371,6 +372,8 @@ const sfx={
   bad(){tone(196,.3,"sawtooth",.045);tone(147,.35,"sawtooth",.045,.12);},
   win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.28,"triangle",.1,i*.11));},
   click(){tone(740,.03,"triangle",.045);},
+  alarmUp(){[880,1175,880,1175].forEach((f,i)=>tone(f,.12,"square",.06,i*.14));},
+  alarmDown(){[440,330,440,330].forEach((f,i)=>tone(f,.16,"sawtooth",.05,i*.18));},
 };
 let WL=null;
 function keepAwake(){try{if(!WL||WL.released)navigator.wakeLock?.request("screen").then(l=>WL=l,()=>{});}catch(e){}}
@@ -518,7 +521,21 @@ const DOODADS=[
  PERM("other",1,60,"Gym membership","You signed a 2-year contract. +$60 every month."),
 ];
 const M=o=>()=>({...o,...(o.lo?{price:rand(o.lo,o.hi)*K}:{})});
+/* Trap cards teach financial literacy: each looks tempting, and when it plays out a "Money lesson" explains the red flags. */
+const TRAP=(type,title,text,o)=>()=>({kind:"trap",type,title,text,...o});
+const TRAPS=[
+ TRAP("ponzi","Guaranteed 15% a month","A smooth-talking advisor offers a fund that 'never loses' and pays 15% every month. Your neighbor says he's already been paid twice.",
+  {choose:true,months:2,rate:.15,lesson:"This was a Ponzi scheme. The 'returns' were paid out of new investors' money until the money ran out and the fund vanished. Red flags: guaranteed high returns, no clear business behind them, pressure to invest quickly. 15% a month is over 400% a year; nothing real pays that safely."}),
+ TRAP("pump","Hot tip: MoonRocket token","A friend in a chat group swears this new token will 'go 10x by Friday'. A starter bag costs $3,000.",
+  {cost:3000,refund:.08,lesson:"This was a pump-and-dump. The people who hyped the token sold at the top, and the price crashed 92%. Red flags: tips from anonymous chats, promises of 10x, pressure to buy right now. Never invest in something you can't explain in one sentence."}),
+ TRAP("course","Trading course + signals","A guru filming in a rented sports car sells a course and daily 'can't-lose' trading signals: $2,500 now plus $150 a month for 6 months.",
+  {cost:2500,fee:150,months:6,lesson:"Most paid trading signals lose money; the seller earns from your fees, not from trading. Red flags: luxury lifestyle marketing, 'can't lose', recurring payments. Free education and a low-cost index fund beat this almost every time."}),
+ TRAP("mlm","Friend's MLM business","A friend invites you to 'be your own boss' selling wellness products. Starter kit $1,500, then $100 of inventory every month for 6 months.",
+  {cost:1500,fee:100,months:6,income:30,lesson:"Multi-level marketing: nearly everyone who joins loses money, because you must keep buying inventory and recruiting friends. Red flags: you pay to join, income depends on recruiting, monthly purchase quotas."}),
+];
+SMALL.push(...TRAPS,()=>stockCard("TMIX"),()=>stockCard("TMIX"));
 const MARKET=[
+ ()=>({kind:"hype",up:true}),()=>({kind:"hype",up:false}),
  M({kind:"buyer",type:"sub",sub:"condo",lo:80,hi:110,title:"Condo buyer",text:"A first-time buyer wants a 2BR/1BA condo and has a pre-approved mortgage."}),
  M({kind:"buyer",type:"sub",sub:"house21",lo:100,hi:140,title:"Buyer for a 2BR/1BA house",text:"A young couple is looking for a starter home."}),
  M({kind:"buyer",type:"sub",sub:"house32",lo:130,hi:190,title:"Buyer for a 3BR/2BA house",text:"A relocating family needs a house before school starts."}),
@@ -538,10 +555,12 @@ const MARKET=[
 const DECKS={small:SMALL,big:BIG,market:MARKET,doodad:DOODADS};
 const DECK_INFO={small:{name:"Small Deals",color:"#1f8a5b",icon:"opp"},big:{name:"Big Deals",color:"#2a5bd7",icon:"big"},market:{name:"Market",color:"#c48a12",icon:"market"},doodad:{name:"Doodads",color:"#c4456a",icon:"doodad"}};
 const TICKERS={NOVA:{name:"Novatek Robotics",base:20},GRNR:{name:"GreenRiver Energy",base:35},BLUC:{name:"BlueCart Retail",base:8},MEDX:{name:"Medexa Labs",base:14},DIVY:{name:"Dividend Income Fund",base:50,div:.175},
-  BTC:{name:"Bitcoin",base:65000,crypto:1},ETH:{name:"Ethereum",base:3200,crypto:1}};
-function stockCard(tk){tk=tk||pick(["NOVA","GRNR","BLUC","MEDX"]);const r=tk==="DIVY"?.85+Math.random()*.3:.4+Math.random()*1.4;
+  AERO:{name:"SkyLine Airways",base:18},CHIP:{name:"Quantix Chips",base:120},VOLT:{name:"VoltDrive EV",base:45},PHRM:{name:"Helix Pharma",base:60},FOOD:{name:"Harvest Foods",base:30},PLAY:{name:"PixelPlay Games",base:25},
+  BTC:{name:"Bitcoin",base:65000,crypto:1},ETH:{name:"Ethereum",base:3200,crypto:1},SOL:{name:"Solana",base:150,crypto:1},DOGE:{name:"Dogecoin",base:.15,crypto:1},TMIX:{name:"Total Market Index Fund",base:100,div:.25}};
+const STOCK_LIST=["NOVA","GRNR","BLUC","MEDX","AERO","CHIP","VOLT","PHRM","FOOD","PLAY"],CRYPTO_LIST=["BTC","ETH","SOL","DOGE"];
+function stockCard(tk){tk=tk||pick(STOCK_LIST);const r=tk==="DIVY"||tk==="TMIX"?.9+Math.random()*.2:.4+Math.random()*1.4;
   return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(TICKERS[tk].base*r*2)/2),ratio:r};}
-function cryptoCard(){const tk=pick(["BTC","ETH"]),r=.3+Math.random()*1.9;return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(TICKERS[tk].base*r)),ratio:r};}
+function cryptoCard(){const tk=pick(CRYPTO_LIST),r=.3+Math.random()*1.9,v=TICKERS[tk].base*r;return {kind:"stock",ticker:tk,price:v<20?Math.round(v*100)/100:Math.round(v),ratio:r};}
 function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*1600)/10)*10};}
 const BOT_NAMES=["Ava","Leo","Mia","Noah","Zoe","Kai"];
 
@@ -550,7 +569,7 @@ const IMAGES=new Set("atm bitcoin carshare carwash coffee complex condo containe
 const IMG_BY_TITLE={"Condo 2BR/1BA":"condo","House 2BR/1BA":"house21","House 3BR/2BA":"house32","Fixer-upper 3BR/2BA":"fixer","Duplex":"duplex","Vending machines":"vending","Laundromat stake":"laundromat","ATM machine":"atm","Used food truck":"foodtruck","Car-share vehicle":"carshare","Niche website":"website","Billboard lease":"billboard","Storage container":"container","Land, 10 acres":"land","Professional certification":"course","Certificate of deposit":"bank",
   "4-plex":"plex4","8-plex":"plex8","12-unit apartment building":"plex12","24-unit apartment complex":"complex","Car wash":"carwash","Daycare center":"daycare","Coffee franchise":"coffee","Dental clinic":"dental","Gym franchise":"gym","Tutoring center":"tutoring","Self-storage facility":"storage","Boutique hotel":"hotel","Solar farm":"solar",
   "New smartphone":"phone","Friend's wedding":"wedding","Car repair":"carrepair","Dentist":"dentist","Family vacation":"vacation","Washing machine":"washer","Unpaid loan":"loan","Speeding ticket":"ticket","Big-screen TV":"tv","Birthday party":"party","Medical bill":"medical","New laptop":"laptop","Vet bill":"vet","Home repair":"homerepair","Lifestyle creep":"lifestyle","Gym membership":"gymmember"};
-const artOf=d=>d.img||IMG_BY_TITLE[d.title]||IMG_BY_TITLE[d.t]||(d.ticker==="BTC"?"bitcoin":d.ticker==="ETH"?"ethereum":d.ticker==="DIVY"?"fund":d.kind==="stock"?"stocks":d.kind==="gold"?"gold":d.kind==="cd"?"bank":"");
+const artOf=d=>d.img||IMG_BY_TITLE[d.title]||IMG_BY_TITLE[d.t]||(d.ticker==="BTC"?"bitcoin":d.ticker==="ETH"||d.ticker==="SOL"||d.ticker==="DOGE"?"ethereum":d.ticker==="DIVY"||d.ticker==="TMIX"?"fund":d.kind==="stock"?"stocks":d.kind==="gold"?"gold":d.kind==="cd"?"bank":"");
 const artStyle=k=>k&&IMAGES.has(k)?`--art:url(img/${k}.jpg)`:"";
 const KIND_ICON={re:"big",biz:"opp",land:"market",stock:"market",gold:"pay",cd:"bank",ftbiz:"big"};
 let nextArt="";
@@ -589,7 +608,7 @@ function draw(deck){
   return DECKS[deck][G.decks[deck].pop()]();
 }
 
-/* ================= bank (rulebook: $1,000 steps, 10% a month, interest only) ================= */
+/* ================= bank (rulebook: $1,000 steps, 2% a month, interest only) ================= */
 function takeLoan(p,amt){
   amt=up1k(amt);if(amt<=0)return 0;
   let l=p.loans.find(x=>x.kind==="bank");
@@ -619,6 +638,7 @@ function payday(p){
   p.months++;
   if(cf<0&&p.cash+cf<0){bankrupt(p);return;}
   p.cash+=cf;
+  processTraps(p);
   p.hist.push(Math.round(netWorth(p)));if(p.hist.length>120)p.hist.shift();
   log(`${p.name} got paid: ${cf>=0?"+":""}${fmt(cf)}`,p.id);
   sfx.coin();buzz([15,40,15]);coinBurst(cf>0?10:0);toast(`Payday · ${cf>=0?"+":""}${fmt(cf)}`);
@@ -667,16 +687,16 @@ function trackPrice(){} // price history now comes from the live market below
    Prices move every 4 seconds on their own: small random steps, sometimes a sudden jump of 8–30%, and a slow pull back
    toward each asset's usual price. Every device computes the same path from the game's seed and the clock, so online
    players see identical prices without sending any data. Cards and market events set a new anchor price. */
-const TICK_MS=4000, LIVE=["NOVA","GRNR","BLUC","MEDX","DIVY","BTC","ETH","GOLD"];
-const VOL={NOVA:.022,GRNR:.014,BLUC:.03,MEDX:.02,DIVY:.004,BTC:.035,ETH:.045,GOLD:.006};
-const JUMP={NOVA:.18,GRNR:.12,BLUC:.25,MEDX:.2,DIVY:.03,BTC:.28,ETH:.32,GOLD:.06};
+const TICK_MS=4000, LIVE=["TMIX",...STOCK_LIST,"DIVY",...CRYPTO_LIST,"GOLD"];
+const VOL={TMIX:.005,NOVA:.022,GRNR:.014,BLUC:.03,MEDX:.02,AERO:.026,CHIP:.028,VOLT:.034,PHRM:.02,FOOD:.009,PLAY:.03,DIVY:.004,BTC:.035,ETH:.045,SOL:.05,DOGE:.065,GOLD:.006};
+const JUMP={TMIX:.03,NOVA:.18,GRNR:.12,BLUC:.25,MEDX:.2,AERO:.2,CHIP:.22,VOLT:.3,PHRM:.28,FOOD:.07,PLAY:.25,DIVY:.03,BTC:.28,ETH:.32,SOL:.35,DOGE:.45,GOLD:.06};
 const baseOf=tk=>tk==="GOLD"?3600:TICKERS[tk].base;
 const nowTick=()=>Math.floor(Date.now()/TICK_MS);
 function rng(seed,t,tk){let h=(seed^Math.imul(t,0x9E3779B1)^Math.imul(tk.charCodeAt(0)*31+tk.charCodeAt(1)*7+tk.charCodeAt(2),0x85EBCA6B))>>>0;
   return ()=>{h=(h+0x6D2B79F5)>>>0;let x=h;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return ((x^(x>>>14))>>>0)/4294967296;};}
 function stepPrice(tk,p,t){
-  const r=rng(G.seed||1,t,tk),z=(r()+r()+r()-1.5)*2,jump=r()<.03?(r()<.5?-1:1)*JUMP[tk]*(.45+r()*.65):0;
-  const pull=-.015*Math.log(p/baseOf(tk));
+  const r=rng(G.seed||1,t,tk),z=(r()+r()+r()-1.5)*2,jump=r()<.015?(r()<.5?-1:1)*JUMP[tk]*.6*(.45+r()*.65):0;
+  const pull=tk==="TMIX"?.0003:-.02*Math.log(p/baseOf(tk)); // the index fund drifts slowly upward; everything else is pulled back toward its usual price
   return Math.max(tk==="GOLD"?500:.5,p*Math.exp(pull+VOL[tk]*z+jump));
 }
 const anchorOf=tk=>({p:tk==="GOLD"?G.gold:G.prices[tk],t:(G.anchorT||{})[tk]??nowTick()});
@@ -716,9 +736,7 @@ function marketModal(tk){
         if(held){held.qty=Math.round((held.qty+q)*100)/100;held.cost+=cost;if(TICKERS[tk]?.div)held.income=Math.round(held.qty*TICKERS[tk].div);}
         else p.assets.push(tk==="GOLD"?{id:uid(),kind:"gold",name:"Gold coins",qty:q,cost,income:0,img:"gold"}:{id:uid(),kind:"stock",ticker:tk,name:`${tkName(tk)} (${tk})`,qty:q,cost,income:TICKERS[tk].div?Math.round(q*TICKERS[tk].div):0,img:artOf({ticker:tk,kind:"stock"})});
         p.cash-=cost;log(`${p.name} bought ${q} ${tk} at ${fmt(px)}`);sfx.coin();buzz(20);closeModal();afterChange();}},
-      ...(held?[{label:`Sell all (${fmt(held.qty*livePrice(tk)*.99)})`,fn:()=>{const v=Math.round(held.qty*livePrice(tk)*.99),gain=v-held.cost;
-        p.cash+=v;p.assets=p.assets.filter(a=>a!==held);log(`${p.name} sold ${tk} for ${fmt(v)} (${gain>=0?"+":""}${fmt(gain)})`);
-        gain>=0?(sfx.win(),coinBurst(14)):sfx.bad();buzz(gain>=0?[20,40,20]:60);toast(`${gain>=0?"Profit":"Loss"}: ${gain>=0?"+":""}${fmt(gain)}`);afterChange();}}]:[]),
+      ...(held?[{label:`Sell all (${fmt(held.qty*livePrice(tk)*.99)})`,fn:()=>requestSell(p,held)}]:[]),
       {label:"Close",fn:()=>{}}]});
   const upd=()=>{const q=+$("#qty")?.value||0;const t=$("#qtyCost");if(t)t.textContent=`Total: ${fmt(q*livePrice(tk)*1.01)}`;};
   $("#qty").addEventListener("input",upd);upd();
@@ -741,12 +759,58 @@ setInterval(()=>{
     const tkEl=$("#ticker");if(tkEl)tkEl.innerHTML=tickerHTML();
     const led=$("aside.ledger");if(led){const top=led.scrollTop;led.innerHTML=`<div class="sheet-grab"><b>Finances</b><button class="btn sm" data-a="sheet">Close</button></div>${ledgerHTML(v)}`;led.scrollTop=top;}
   }else if(route==="empire")render();
-  for(const a of v.assets){const tk=a.kind==="gold"?"GOLD":a.ticker;if(!tk)continue;
-    const mv=pctMove(tk,1);
-    if(Math.abs(mv)>=6){const val=assetValue(a);
-      toast(`${mv>0?"🚀":"📉"} ${tk} ${mv>0?"+":""}${mv.toFixed(1)}% · your ${tk} is now ${fmt(val)}`);
-      if(mv>0){sfx.coin();coinBurst(8);}else sfx.bad();buzz(mv>0?[15,30,15]:80);break;}}
+  if(route==="play"&&$("#overlay").hidden){const x=lessonFor();if(x)return showLesson(x);}
+  checkAlarms();
 },1000);
+/* sell-or-wait alarm: when something you own jumps or slides, ask whether to lock in the gain / stop the loss now */
+const alarmRef={},alarmAt={};
+function alarmPlayer(){
+  if(!G)return null;
+  if(ONLINE)return G.players.find(q=>q.uid===NET.uid&&!q.out)||null;
+  const v=G.players[VIEW];return v&&!v.bot&&!v.out?v:null;
+}
+function checkAlarms(){
+  const p=alarmPlayer();if(!p)return;
+  const now=Date.now();
+  for(const a of p.assets){
+    const tk=a.kind==="gold"?"GOLD":a.ticker;if(!tk)continue;
+    const price=livePrice(tk);
+    if(alarmRef[a.id]==null){alarmRef[a.id]=price;continue;}
+    const step=pctMove(tk,1),since=(price/alarmRef[a.id]-1)*100;
+    if((Math.abs(step)>=3||Math.abs(since)>=8)&&now-(alarmAt[a.id]||0)>25000){
+      alarmAt[a.id]=now;alarmRef[a.id]=price;
+      const up=(Math.abs(step)>=3?step:since)>0;
+      if(!$("#overlay").hidden){toast(`${up?"📈":"📉"} ${tk} ${up?"is rising":"is falling"}: ${fmt(price)}`);(up?sfx.alarmUp:sfx.alarmDown)();return;}
+      return alarmModal(p,a,tk,up,Math.abs(step)>=3?step:since);
+    }
+  }
+}
+function alarmModal(p,a,tk,up,mv){
+  const value=Math.round(a.qty*livePrice(tk)*.99),gain=value-a.cost;
+  (up?sfx.alarmUp:sfx.alarmDown)();buzz(up?[60,40,60,40,60]:[200,80,200]);
+  nextArt=tk==="GOLD"?"gold":tk==="BTC"?"bitcoin":TICKERS[tk]?.crypto?"ethereum":"stocks";
+  modal({kicker:up?"Price alarm · rising":"Price alarm · falling",icon:"market",tone:up?"#127a4d":"#a3311f",silent:1,
+    title:up?`📈 Your ${tkName(tk)} is rising!`:`📉 Your ${tkName(tk)} is falling!`,
+    body:`<div class="sh" style="margin-top:0">Last 2 minutes</div>${sparkSVG(liveSeries(tk,30),56)}
+      ${facts([["Move",`${mv>0?"+":""}${mv.toFixed(1)}%`,up?"pos":"neg","hl"],["Price now",fmt(livePrice(tk))],["You own",`${a.qty} ${tk}`],["Worth now",fmt(value)],["You paid",fmt(a.cost)],[gain>=0?"Profit if you sell":"Loss if you sell",`${gain>=0?"+":""}${fmt(gain)}`,gain>=0?"pos":"neg","hl"]])}
+      <p style="font-size:15px;color:var(--ink)">${up?(gain>=0?`Lock in <b class="pos">+${fmt(gain)}</b> now, or wait for it to climb higher?`:`It's recovering. Sell now at ${fmt(gain)}, or wait for it to turn into a profit?`)
+        :(gain>=0?`Your profit is shrinking. Sell now and keep <b class="pos">+${fmt(gain)}</b>, or hold and wait?`:`Stop the loss at <b class="neg">${fmt(gain)}</b> now, or hold and wait for a rebound?`)}</p>`,
+    actions:[{label:up?`Sell now (${gain>=0?"+":""}${fmt(gain)})`:`Sell now, stop the loss (${fmt(gain)})`,primary:up,fn:()=>requestSell(p,a)},
+      {label:up?"Wait for more 🚀":"Hold and wait 🤞",primary:!up,fn:()=>{}}]});
+}
+function sellLive(p,a,remote){
+  const tk=a.kind==="gold"?"GOLD":a.ticker,v=Math.round(a.qty*livePrice(tk)*.99),gain=v-a.cost;
+  p.cash+=v;p.assets=p.assets.filter(x=>x!==a);delete alarmRef[a.id];
+  log(`${p.name} sold ${a.qty} ${tk} for ${fmt(v)} (${gain>=0?"+":""}${fmt(gain)})`,p.id);
+  if(!remote){gain>=0?(sfx.win(),coinBurst(14)):sfx.bad();buzz(gain>=0?[20,40,20]:60);toast(`${gain>=0?"Profit":"Loss"}: ${gain>=0?"+":""}${fmt(gain)}`);}
+  return gain;
+}
+// you may sell what you own at the live price at any moment; online, a sale outside your turn is applied by the acting device
+function requestSell(p,a){
+  if(!p.assets.includes(a))return;
+  if(ONLINE&&!isActor())return sendIntent(a,"live");
+  sellLive(p,a);afterChange();
+}
 function sparkSVG(vals,h=44){
   if(!vals||vals.length<2)return "";
   const mn=Math.min(...vals),mx=Math.max(...vals),w=200,sp=mx-mn||1,pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-4-(v-mn)/sp*(h-8)).toFixed(1)}`);
@@ -867,6 +931,7 @@ function handleCell(p){
   }
 }
 function present(p,d){
+  if(d.kind==="trap")return trapModal(p,d);
   nextArt=artOf(d);
   if(d.kind==="stock")return stockModal(p,d);
   if(d.kind==="gold")return goldModal(p,d);
@@ -886,7 +951,7 @@ function offerDeal(p,d){
   const blocked=need>0&&p.bk;
   const acts=[{label:need?`Borrow ${fmt(borrow)} and buy`:"Buy",primary:1,disabled:blocked,fn:()=>{takeLoan(p,borrow);buyDeal(p,d);}},{label:"Pass",fn:done}];
   modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:esc(d.title),
-    body:`<p>${d.text}</p>${facts(rows)}${rentLine}${need?`<div class="why" style="color:var(--gold-hi)">You need ${fmt(need)} more. The bank lends in $1,000 steps at 10% a month: +${fmt(interest)}/mo.</div>`:""}${blocked?`<div class="why">After bankruptcy the bank won't lend for a few turns.</div>`:""}`,actions:acts,
+    body:`<p>${d.text}</p>${facts(rows)}${rentLine}${need?`<div class="why" style="color:var(--gold-hi)">You need ${fmt(need)} more. The bank lends in $1,000 steps at 2% a month: +${fmt(interest)}/mo.</div>`:""}${blocked?`<div class="why">After bankruptcy the bank won't lend for a few turns.</div>`:""}`,actions:acts,
     bot:()=>{
       if(d.kind==="land")return p.cash-d.cost>3*reserve(p)?0:1;
       if(d.cf<=0)return 1;
@@ -898,6 +963,44 @@ function buyDeal(p,d){
   p.assets.push(a);p.cash-=d.down;
   if(d.mortgage)p.loans.push({id:uid(),name:`${d.loanName}: ${d.title}`,principal:d.mortgage,payment:0,kind:"mort",assetId:a.id});
   log(`${p.name} bought ${a.name} (${fmt(d.down)} down)`);sfx.coin();done();
+}
+function trapModal(p,d){
+  const dk=DECK_INFO.small;nextArt="";
+  const amount=d.choose?Math.max(1000,Math.floor(p.cash*.5/1000)*1000):d.cost;
+  const rows=d.choose?[["Promised return","15% every month","pos"],["Your cash",fmt(p.cash)]]
+    :[["Cost",fmt(d.cost)],...(d.fee?[["Monthly fee",`${fmt(d.fee)} for ${d.months} months`,"neg"]]:[]),...(d.income?[["Promised income",`+${fmt(d.income)}/mo`,"pos"]]:[]),["Your cash",fmt(p.cash)]];
+  modal({kicker:`${dk.name} · special offer`,icon:"opp",tone:"#7a5a12",title:esc(d.title),
+    body:`<p>${d.text}</p>${facts(rows)}${d.choose?`<label class="sh" for="qty">How much to invest ($1,000 steps)</label><input class="field num" id="qty" type="number" min="1000" step="1000" value="${amount}">`:""}
+      <p class="note">Think before you decide: who benefits if you say yes?</p>`,
+    actions:[{label:d.choose?"Invest":"Buy in",primary:1,keep:1,fn:()=>{
+        const c=d.choose?Math.floor(+$("#qty").value/1000)*1000:d.cost;
+        if(!(c>0))return toast("Enter an amount");if(c>p.cash)return toast("Not enough cash");
+        p.cash-=c;
+        p.assets.push({id:uid(),kind:"trap",type:d.type,name:d.title,cost:c,income:d.choose?Math.round(c*d.rate):(d.income||0),trapLeft:d.choose?d.months:1,refund:d.refund||0,lesson:d.lesson,img:""});
+        if(d.fee)p.loans.push({id:uid(),name:`Contract: ${d.title}`,principal:0,payment:d.fee,kind:"sub",monthsLeft:d.months});
+        log(`${p.name} put ${fmt(c)} into "${d.title}"`);sfx.coin();done();}},
+      {label:"No thanks",fn:done}],
+    bot:1});
+}
+// trap assets play out on payday: a Ponzi pays a couple of times then vanishes, a pumped token crashes, contracts run their course
+function processTraps(p){
+  for(const a of [...p.assets])if(a.kind==="trap"&&--a.trapLeft<=0){
+    p.assets=p.assets.filter(x=>x!==a);const back=Math.round(a.cost*(a.refund||0));p.cash+=back;
+    log(`${p.name}: "${a.name}" collapsed (lost ${fmt(a.cost-back)})`,p.id);
+    (G.lessons=G.lessons||[]).push({id:uid(),pid:p.id,title:a.name,lesson:a.lesson,lost:a.cost-back});G.lessons=G.lessons.slice(-20);
+  }
+  for(const l of [...p.loans])if(l.kind==="sub"&&--l.monthsLeft<=0){p.loans=p.loans.filter(x=>x!==l);log(`${p.name}: ${l.name} ended`,p.id);}
+}
+function lessonFor(){
+  const me=alarmPlayer();if(!me||!G.lessons)return null;
+  const seen=store.get("mf.lessons.seen",[]);
+  return G.lessons.find(x=>x.pid===me.id&&!seen.includes(x.id))||null;
+}
+function showLesson(x){
+  const seen=store.get("mf.lessons.seen",[]);seen.push(x.id);store.set("mf.lessons.seen",seen.slice(-100));
+  sfx.bad();
+  modal({kicker:"💡 Money lesson",icon:"audit",tone:"#5b3fb3",title:`What happened with "${esc(x.title)}"`,silent:1,
+    body:`${facts([["You lost",fmt(-x.lost),"neg","hl"]])}<p style="color:var(--ink);font-size:15px">${esc(x.lesson)}</p>`,actions:[{label:"Lesson learned",primary:1,fn:()=>{}}]});
 }
 function courseModal(p,d){
   const dk=DECK_INFO.small,rise=Math.round(p.salary*.1),taxUp=Math.round(rise*.25);
@@ -936,7 +1039,7 @@ function stockModal(p,d){
   openOffer({type:"ticker",ticker:d.ticker,price:d.price,title:`${TICKERS[d.ticker].name} at ${fmt(d.price)}`});
   const tk=TICKERS[d.ticker],held=p.assets.find(a=>a.kind==="stock"&&a.ticker===d.ticker);
   const note=tk.crypto?`${d.ratio<.8?"Crypto sold off hard this week.":d.ratio>1.5?"Crypto is in a hype rally.":"Prices are calm for once."} It has traded around ${fmt(tk.base)}. Swings of 50% happen. No income.`
-    :tk.div?`Pays ${fmt(tk.div*100)} per 100 shares every month, about 4% a year.`:`${d.ratio<.8?"Shares dropped after a weak earnings report.":d.ratio>1.3?"Strong earnings pushed the stock up.":"The stock trades near its usual range."} Trading range: ${fmt(tk.base*.4)}–${fmt(tk.base*1.8)}. No dividend.`;
+    :d.ticker==="TMIX"?`Owns a small slice of every big company. Low fees, slow and steady growth, pays ${fmt(tk.div*100)} per 100 shares every month (about 3% a year). 💡 Most professional investors fail to beat a simple index fund over 20 years.`:tk.div?`Pays ${fmt(tk.div*100)} per 100 shares every month, about 4% a year.`:`${d.ratio<.8?"Shares dropped after a weak earnings report.":d.ratio>1.3?"Strong earnings pushed the stock up.":"The stock trades near its usual range."} Trading range: ${fmt(tk.base*.4)}–${fmt(tk.base*1.8)}. No dividend.`;
   tradeModal(p,{title:`${tk.name} · ${d.ticker}`,price:d.price,unit:tk.crypto?"/ coin":"/ share",held,qtyQ:tk.crypto?"Coins to buy (decimals allowed)":"Shares to buy",def:tk.crypto?.1:100,step:tk.crypto?.01:10,dec:!!tk.crypto,
     body:`<p>${note}</p><div class="sh">Recent prices</div>${sparkSVG(liveSeries(d.ticker))}`,
     botBuy:tk.div?true:d.ratio<(tk.crypto?.6:.7),share:tk.div?.25:tk.crypto?.08:.3,
@@ -981,6 +1084,9 @@ function marketCard(p,d){
       return show(`${TICKERS[tk].name} splits 2-for-1`,`Every share becomes two at half the price, for every player. Holdings keep the same value.`);}
     case "crash": G.prices.BLUC=1;trackPrice("BLUC",1);log("BlueCart Retail collapsed to $1.");return show("BlueCart Retail scandal","Accounting fraud was uncovered. BLUC shares crash to $1 for every player.","var(--bad)");
     case "goldup": G.gold=Math.round(G.gold*1.15);trackPrice("GOLD",G.gold);log("Gold rose 15%.");return show("Currency slump","The dollar weakened and gold jumped 15%.");
+    case "hype":{const tk=pick(STOCK_LIST),k=d.up?1.5:.65;G.prices[tk]=Math.round(G.prices[tk]*k*100)/100;log(`${tkName(tk)} ${d.up?"jumped 50% on social media hype":"fell 35% in a panic"}.`);
+      return show(d.up?`${tkName(tk)} goes viral`:`Panic selling in ${tkName(tk)}`,d.up?`Everyone online is talking about ${tkName(tk)} (${tk}). The price jumped 50% in an hour and people are piling in. Is it worth more today than yesterday?`
+        :`A scary headline hit ${tkName(tk)} (${tk}) and people are dumping shares. The price fell 35% in an hour. Did the company really lose a third of its value?`,d.up?"var(--good)":"var(--bad)");}
     case "cryptocrash": ["BTC","ETH"].forEach(t=>{G.prices[t]=Math.round(G.prices[t]*.55);trackPrice(t,G.prices[t]);});log("Crypto crashed 45%.");
       return show("Crypto crash","A major exchange collapsed. Bitcoin and Ethereum fall 45% overnight.","var(--bad)");
   }
@@ -1007,8 +1113,8 @@ function charityCell(p){
     actions:[{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.charity=3;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],bot:()=>p.cash>amt+2*reserve(p)?0:1});
 }
 function downCell(p){
-  const t=SPACE.down,lose=totalExp(p),note=mustPay(p,lose);p.skip=2;log(`${p.name} was downsized: −${fmt(lose)}, misses 2 turns`);sfx.bad();
-  modal({kicker:t.name,icon:t.icon,tone:t.color,title:"You were downsized",body:`<p>You lost your job. Pay one month of total expenses and miss 2 turns.</p>${facts([["Total expenses",fmt(-lose),"neg","hl"]])}${note}`,actions:[{label:"Got it",primary:1,fn:done}],bot:0});
+  const t=SPACE.down,lose=Math.round(totalExp(p)/2),note=mustPay(p,lose);p.skip=1;log(`${p.name} was downsized: −${fmt(lose)}, misses 1 turn`);sfx.bad();
+  modal({kicker:t.name,icon:t.icon,tone:t.color,title:"You were downsized",body:`<p>You lost your job for a few weeks. Unemployment benefits cover half your expenses; you pay the other half and miss 1 turn while you find new work.</p>${facts([["Half a month of expenses",fmt(-lose),"neg","hl"]])}<p class="note">💡 An emergency fund of 3–6 months of expenses turns a layoff into an inconvenience instead of a crisis.</p>${note}`,actions:[{label:"Got it",primary:1,fn:done}],bot:0});
 }
 function showBankrupt(p){
   modal({kicker:"Bankruptcy",icon:"down",tone:"var(--bad)",title:p.out?`${esc(p.name)} is out of the game`:`${esc(p.name)} went bankrupt`,silent:1,
@@ -1058,7 +1164,7 @@ function bankModal(){
   const amts=[1,2,5,10,25,50];
   modal({kicker:"Bank",icon:"bank",tone:"var(--navy)",title:"Bank",silent:1,body:`
     ${facts([["Your cash",fmt(p.cash)],["Bank loan",b?`${fmt(b.principal)} (${fmt(b.payment)}/mo)`:"none"],["Cash flow",fmt(cashflow(p))+"/mo",cashflow(p)>=0?"pos":"neg"]])}
-    <div class="sh">Borrow · $1,000 steps · 10% a month, interest only</div>
+    <div class="sh">Borrow · $1,000 steps · 2% a month, interest only</div>
     ${p.bk?`<p class="why">After bankruptcy the bank won't lend for ${p.bk} more turn(s).</p>`:`<div class="amts">${amts.map(a=>`<button class="btn" data-loan="${a}">$${a}k<small>+${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}</div>`}
     ${b?`<div class="sh">Repay bank loan · $1,000 steps</div><div class="amts">${[1,5,10].map(a=>`<button class="btn" data-repay="${a}" ${p.cash<a*K||b.principal<a*K?"disabled":""}>$${a}k<small>−${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}<button class="btn" data-repay="all" ${p.cash<b.principal?"disabled":""}>All<small>${fmt(b.principal)}</small></button></div>`:""}
     <div class="sh">Pay off debts · in full only</div>
@@ -1156,7 +1262,7 @@ function homeHTML(){
     <div class="preview" aria-hidden="true">${boardHTML(null,"rat")}</div>
   </section>
   <div class="tiles">
-    <div class="card tile"><div class="eyebrow">Classic rules</div><h3>Rat race, then Fast Track</h3><p>Down payments and mortgages, bank loans at 10% a month, market cards for every player, bankruptcy, and a Fast Track with Dreams.</p></div>
+    <div class="card tile"><div class="eyebrow">Classic rules</div><h3>Rat race, then Fast Track</h3><p>Down payments and mortgages, bank loans at 2% a month, market cards for every player, bankruptcy, and a Fast Track with Dreams.</p></div>
     <div class="card tile"><div class="eyebrow">${n} cards</div><h3>Four decks</h3><p>${SMALL.length} Small Deals, ${BIG.length} Big Deals, ${MARKET.length} Market cards and ${DOODADS.length} Doodads, shuffled and drawn like a real deck.</p></div>
     <div class="card tile"><div class="eyebrow">${PROFS.length} jobs</div><h3>Friends or bots</h3><p>Play on one device, online with friends, or against bots that buy with leverage and sell to good buyers.</p></div>
     <div class="card tile"><div class="eyebrow">This device</div><div class="muted" style="font-size:13px;margin-top:6px">Games started</div><div class="stat">${s.played}</div><div class="muted" style="font-size:13px;margin-top:6px">Wins · fastest</div><div class="stat">${s.wins.length} · ${best===null?"—":yrs(best)}</div></div>
@@ -1301,12 +1407,13 @@ function guideHTML(){
   <div class="guide">
     <div class="card"><h3>Goal</h3><p>First leave the rat race: make passive income (rent, business cash flow, dividends, interest) bigger than your total expenses. Then, on the Fast Track, buy your Dream or add $50,000 to your CASHFLOW Day income.</p></div>
     <div class="card"><h3>Setup</h3>${li(["Each player gets a job with a full income statement and balance sheet.","Start cash is savings plus one month of cash flow.","Each player picks a Dream that waits on the Fast Track."])}</div>
-    <div class="card"><h3>Rat race spaces</h3>${li(["Payday: passing or landing pays your monthly cash flow.","Opportunity: draw a Small Deal or a Big Deal.","Market: buyers and price changes. They apply to every player until the next roll.","Doodad: an expense you must pay.","Charity: give 10% of income to roll 1 or 2 dice for 3 turns.","Baby: add the cost of a child, up to 3.","Downsized: pay one month of total expenses and miss 2 turns."])}</div>
+    <div class="card"><h3>Rat race spaces</h3>${li(["Payday: passing or landing pays your monthly cash flow.","Opportunity: draw a Small Deal or a Big Deal.","Market: buyers and price changes. They apply to every player until the next roll.","Doodad: an expense you must pay.","Charity: give 10% of income to roll 1 or 2 dice for 3 turns.","Baby: add the cost of a child, up to 3.","Downsized: benefits cover half; you pay half a month of expenses and miss 1 turn."])}</div>
     <div class="card"><h3>Buying and selling</h3>${li(["You pay only the down payment. The mortgage goes to your liabilities.","A deal's cash flow already includes the mortgage payment.","When a buyer appears, you receive the price minus the mortgage.","Stock prices on a card are valid for everyone until the next roll."])}</div>
-    <div class="card"><h3>Bank</h3>${li(["Borrow in $1,000 steps. Interest is 10% a month and is added to your expenses.","Repay bank loans in $1,000 steps.","Other debts (mortgage, school, car, credit cards, retail) are paid off in full only.","Taxes, other expenses and child costs can't be reduced."])}</div>
+    <div class="card"><h3>Bank</h3>${li(["Borrow in $1,000 steps. Interest is 2% a month and is added to your expenses.","Repay bank loans in $1,000 steps.","Other debts (mortgage, school, car, credit cards, retail) are paid off in full only.","Taxes, other expenses and child costs can't be reduced."])}</div>
     <div class="card"><h3>Bankruptcy</h3>${li(["If cash flow is negative on Payday and you can't pay, you go bankrupt.","Assets are sold to the bank for half their down payment to pay debts. You miss 3 turns.","If cash flow is still negative, car, credit card and retail debts are halved.","If it is still negative, you are out of the game."])}</div>
     <div class="card"><h3>Fast Track</h3>${li(["Your CASHFLOW Day income is 100 times your passive income. That is also your starting cash.","Roll 2 dice. Buy businesses to raise CASHFLOW Day income. Each business can be bought once.","Land on your Dream with enough cash to buy it and win. Landing on someone else's Dream raises its price for them by 100%.","Charity lets you roll 1–3 dice. Tax audit and lawsuit take half your cash. Divorce takes all of it.","There are no bank loans on the Fast Track."])}</div>
   </div>
+  <div class="card" style="margin-top:14px"><h3 style="font-size:20px;margin-bottom:8px">💡 Money lessons in this game</h3>${li(["Assets put money in your pocket; liabilities take it out. A big house or a new car is usually a liability.","Guaranteed high returns are a red flag. Real investments go up and down.","Tips from strangers and chat groups are how pump-and-dumps find buyers.","If you must pay to join and recruit friends to earn, it is probably an MLM.","A low-cost index fund grows slowly but beats most traders over time.","Crowds overreact: hype pushes prices too high, panic pushes them too low.","Keep an emergency fund of 3–6 months of expenses before investing.","Expensive debt (credit cards, personal loans) is usually the first thing to pay off."])}</div>
   <div class="card" style="margin-top:14px"><h3 style="font-size:20px;margin-bottom:8px">Jobs</h3>${jobsTable()}</div>`;
 }
 function recordsHTML(){
@@ -1504,11 +1611,12 @@ function onIntents(qs){
   qs.docs.forEach(d=>{const x=d.data();if(!x)return;const key=`${x.uid}:${x.n}`;if(ONLINE.applied.has(key)||(G.applied||[]).includes(key))return;
     ONLINE.applied.add(key);(G.applied=G.applied||[]).push(key);G.applied=G.applied.slice(-40);
     const p=G.players.find(q=>q.uid===x.uid),a=p?.assets.find(y=>y.id===x.assetId);
+    if(p&&a&&x.kind==="live"&&(a.kind==="stock"||a.kind==="gold")){sellLive(p,a,true);changed=true;return;}
     if(p&&a&&offerActive()&&G.offer.id===x.offerId&&offerMatch(G.offer,a)){sellOffer(p,a);changed=true;}});
   if(changed){render();save();}
 }
-async function sendIntent(a){
-  try{await NET.db.doc(`rooms/${ONLINE.code}/intents/${NET.uid}`).set({uid:NET.uid,offerId:G.offer.id,assetId:a.id,n:Date.now()});toast("Sale sent. It goes through on the current player's device.");}
+async function sendIntent(a,kind){
+  try{await NET.db.doc(`rooms/${ONLINE.code}/intents/${NET.uid}`).set({uid:NET.uid,kind:kind||"offer",offerId:G.offer?.id||null,assetId:a.id,n:Date.now()});toast("Sale sent. It goes through in a moment.");}
   catch(e){toast(errMsg(e));}
 }
 async function pushState(){
