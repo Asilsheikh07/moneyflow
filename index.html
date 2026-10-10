@@ -322,7 +322,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 <div class="overlay" id="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden role="status"></div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const K=1e3, SAVE="mf.game.v3", PREF="mf.prefs.v1", STATS="mf.stats.v1", BANK_RATE=.10, MAX_KIDS=3;
@@ -1237,107 +1237,76 @@ function errMsg(e){
   if(e?.code==="quota_exceeded")return "The game server is full right now. Try again later.";
   if(e?.code==="busy")return "The room is busy. Try again in a moment.";
   if(e?.code==="full")return "That room is full or already started.";
-  if(e?.code==="notfound")return "No room with that code is open right now. The host must keep the game open.";
+  if(e?.code==="notfound")return "No room with that code. Check the code and try again.";
   return "Couldn't reach the game server. Check your connection and try again.";
 }
-/* Peer-to-peer stand-in for the claude.ai db, used when the game runs on its own website.
-   The device that creates a room claims the PeerJS id "moneyflow-v1-<CODE>" and holds every room document;
-   other devices connect to it, read a full copy, send their writes to it, and receive each change it broadcasts.
+/* Server-relayed stand-in for the claude.ai db, used when the game runs on its own website.
+   Every room document is a retained message on a public MQTT broker (topic moneyflow/v1/<path>), so all players
+   connect outward to the same server: it works across any home or mobile network, and the room survives a reload.
    Only the calls the online module uses are implemented: doc().get/set/update/onSnapshot/acquire, collection().onSnapshot.
-   ponytail: no TURN relay, so two strict mobile-carrier NATs may fail to connect; add a TURN server if players report that. */
-function makePeerDB(){
-  const PFX="moneyflow-v1-",HOSTKEY="mf.hostdocs.";
-  const docs={},subs={},colSubs={};
-  let peer=null,role=null,code=null,hostConn=null,conns=[],connecting=null;
+   ponytail: public brokers have no access control, so anyone who guesses a room code could read or change it;
+   move to a private broker or a real backend before this becomes a public product. */
+function makeMqttDB(){
+  const BROKERS=["wss://broker.emqx.io:8084/mqtt","wss://broker.hivemq.com:8884/mqtt"],PFX="moneyflow/v1/";
+  const docs={},subs={},colSubs={},rooms={};
+  let client=null,ready=null;
   const codeOf=p=>p.split("/")[1];
   const clone=x=>x==null?undefined:JSON.parse(JSON.stringify(x));
   const snapOf=p=>({id:p.split("/").pop(),exists:docs[p]!=null,data:()=>clone(docs[p]),metadata:{}});
   const colSnap=c=>{const n=c.split("/").length+1;return {docs:Object.keys(docs).filter(p=>p.startsWith(c+"/")&&p.split("/").length===n).map(snapOf)};};
   const emit=p=>{setTimeout(()=>{(subs[p]||[]).forEach(f=>f(snapOf(p)));const c=p.split("/").slice(0,-1).join("/");(colSubs[c]||[]).forEach(f=>f(colSnap(c)));},0);};
-  const emitAll=()=>Object.keys({...docs,...subs}).forEach(emit);
-  const persist=()=>{try{localStorage.setItem(HOSTKEY+code,JSON.stringify(docs));}catch(e){}};
-  function apply(op,p,data){
-    if(op==="set")docs[p]=data;
-    else if(op==="update"){if(docs[p]==null)throw {code:"invalid_argument"};docs[p]={...docs[p],...data};}
-    else if(op==="delete")delete docs[p];
-    emit(p);
-    if(role==="host"){conns.forEach(c=>c.open&&c.send({t:"doc",path:p,data:docs[p]??null}));persist();}
-  }
-  const newPeer=id=>new Promise((res,rej)=>{
-    const pr=id?new Peer(id,{debug:0}):new Peer({debug:0});
-    const t=setTimeout(()=>rej({code:"unavailable"}),12000);
-    pr.on("open",()=>{clearTimeout(t);res(pr);});
-    pr.on("error",e=>{clearTimeout(t);rej({code:e.type==="unavailable-id"?"busy":e.type==="peer-unavailable"?"notfound":"unavailable"});});
-  });
-  async function becomeHost(c,saved){
-    if(role==="host"&&code===c)return;
-    if(peer){try{peer.destroy();}catch(e){}}
-    peer=await newPeer(PFX+c);role="host";code=c;conns=[];
-    if(saved)Object.assign(docs,saved);
-    peer.on("connection",conn=>{
-      conns.push(conn);
-      conn.on("data",m=>{
-        if(m.t==="sync")conn.send({t:"all",docs});
-        if(m.t==="write"&&codeOf(m.path)===code){try{apply(m.op,m.path,m.data);}catch(e){}}
-      });
-      conn.on("close",()=>{conns=conns.filter(x=>x!==conn);});
-    });
-    peer.on("disconnected",()=>{try{peer.reconnect();}catch(e){}});
-  }
-  function joinHost(c){
-    if(role==="host"&&code===c)return Promise.resolve();
-    if(role==="guest"&&code===c&&hostConn?.open)return Promise.resolve();
-    if(connecting&&connecting.c===c)return connecting.p;
-    const p=(async()=>{
-      if(!peer||role==="host"){if(peer){try{peer.destroy();}catch(e){}}peer=await newPeer();}
-      const errP=new Promise((_,rej)=>peer.once("error",e=>rej({code:e.type==="peer-unavailable"?"notfound":"unavailable"})));
-      const conn=peer.connect(PFX+c,{reliable:true});
-      await Promise.race([new Promise((res,rej)=>{
-        const t=setTimeout(()=>rej({code:"notfound"}),9000);
-        conn.on("open",()=>conn.send({t:"sync"}));
-        conn.on("data",m=>{
-          if(m.t==="all"){clearTimeout(t);Object.keys(docs).filter(k=>codeOf(k)===c).forEach(k=>delete docs[k]);Object.assign(docs,m.docs);emitAll();res();}
-          if(m.t==="doc"){if(m.data==null)delete docs[m.path];else docs[m.path]=m.data;emit(m.path);}
+  function connect(){
+    if(ready)return ready;
+    ready=new Promise((res,rej)=>{
+      let i=0;
+      const attempt=()=>{
+        let settled=false;
+        const c=mqtt.connect(BROKERS[i],{clientId:"mf_"+uid()+uid(),reconnectPeriod:2000,connectTimeout:8000,clean:true});
+        const fail=()=>{if(settled)return;settled=true;try{c.end(true);}catch(e){}if(++i<BROKERS.length)attempt();else{ready=null;rej({code:"unavailable"});}};
+        c.on("connect",()=>{
+          if(!settled){settled=true;client=c;res();}
+          Object.keys(rooms).forEach(code=>c.subscribe(PFX+"rooms/"+code+"/#",{qos:1})); // resubscribe after a reconnect
         });
-        conn.on("close",()=>{if(hostConn===conn){hostConn=null;toast("Connection to the host was lost. Reconnecting…");setTimeout(()=>joinHost(c).catch(()=>toast("The host has left. The game resumes when they come back.")),2500);}});
-      }),errP]);
-      role="guest";code=c;hostConn=conn;
-    })().finally(()=>{connecting=null;});
-    connecting={c,p};return p;
+        c.on("message",(topic,buf)=>{
+          const p=topic.slice(PFX.length),s=buf.toString();
+          if(!s)delete docs[p];else{try{docs[p]=JSON.parse(s);}catch(e){return;}}
+          emit(p);
+        });
+        c.on("error",()=>{if(!client)fail();});
+        setTimeout(()=>{if(!client)fail();},9000);
+      };
+      attempt();
+    });
+    return ready;
+  }
+  // subscribing delivers the room's retained documents; give them a moment to arrive before reading
+  function room(code){
+    if(!rooms[code])rooms[code]=(async()=>{
+      await connect();
+      await new Promise((res,rej)=>client.subscribe(PFX+"rooms/"+code+"/#",{qos:1},e=>e?rej({code:"unavailable"}):res()));
+      await sleep(1200);
+    })().catch(e=>{delete rooms[code];throw e;});
+    return rooms[code];
+  }
+  async function write(op,p,data){
+    await room(codeOf(p));
+    if(op==="update"){if(docs[p]==null)throw {code:"invalid_argument"};data={...docs[p],...data};}
+    if(op==="delete")delete docs[p];else docs[p]=data;
+    emit(p);
+    await new Promise((res,rej)=>client.publish(PFX+p,op==="delete"?"":JSON.stringify(data),{qos:1,retain:true},e=>e?rej({code:"unavailable"}):res()));
   }
   function ref(p){return {
     path:p,id:p.split("/").pop(),
-    async get(){
-      const c=codeOf(p);
-      try{await joinHost(c);}catch(e){
-        if(e.code!=="notfound")throw e;
-        const saved=JSON.parse(localStorage.getItem(HOSTKEY+c)||"null"); // we hosted this room before a reload
-        if(saved){await becomeHost(c,saved);emitAll();}
-        else return {id:p.split("/").pop(),exists:false,data:()=>undefined,metadata:{}};
-      }
-      return snapOf(p);
-    },
-    async set(data){
-      const c=codeOf(p);
-      if(p.split("/").length===2&&!(role&&code===c))await becomeHost(c); // creating a new room makes this device its host
-      return write("set",p,data);
-    },
+    async get(){await room(codeOf(p));return snapOf(p);},
+    set(data){return write("set",p,data);},
     update(data){return write("update",p,data);},
     delete(){return write("delete",p);},
-    async acquire(){return {acquired:true};}, // the host applies writes one at a time
-    onSnapshot(fn){(subs[p]=subs[p]||[]).push(fn);setTimeout(()=>fn(snapOf(p)),0);return ()=>{subs[p]=subs[p].filter(x=>x!==fn);};},
+    async acquire(){return {acquired:true};}, // ponytail: no lock; two players joining in the same second could overwrite each other's seat
+    onSnapshot(fn){(subs[p]=subs[p]||[]).push(fn);room(codeOf(p)).then(()=>fn(snapOf(p)),()=>{});return ()=>{subs[p]=subs[p].filter(x=>x!==fn);};},
   };}
-  async function write(op,p,data){
-    const c=codeOf(p);
-    if(role==="host"&&code===c)return apply(op,p,data);
-    await joinHost(c);
-    if(op==="update"&&docs[p]==null)throw {code:"invalid_argument"};
-    if(op==="delete")delete docs[p];else docs[p]=op==="set"?data:{...docs[p],...data};
-    emit(p);hostConn.send({t:"write",op,path:p,data});
-  }
   return {
     doc:ref,
-    collection(c){return {path:c,doc:id=>ref(c+"/"+id),onSnapshot(fn){(colSubs[c]=colSubs[c]||[]).push(fn);setTimeout(()=>fn(colSnap(c)),0);return ()=>{colSubs[c]=colSubs[c].filter(x=>x!==fn);};}};},
+    collection(c){return {path:c,doc:id=>ref(c+"/"+id),onSnapshot(fn){(colSubs[c]=colSubs[c]||[]).push(fn);room(codeOf(c)).then(()=>fn(colSnap(c)),()=>{});return ()=>{colSubs[c]=colSubs[c].filter(x=>x!==fn);};}};},
   };
 }
 async function initNet(){
@@ -1346,9 +1315,9 @@ async function initNet(){
       const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
       const id=db&&user?await user.id():null;
       NET=id?{db,uid:id,canWrite:await user.can("data.write")}:false;
-    }else if(window.Peer){
+    }else if(window.mqtt){
       let id=store.get("mf.uid",null);if(!id){id="p_"+uid()+uid();store.set("mf.uid",id);}
-      NET={db:makePeerDB(),uid:id,canWrite:true,p2p:true};
+      NET={db:makeMqttDB(),uid:id,canWrite:true,relay:true};
     }else NET=false;
   }catch(e){NET=false;}
   render();
