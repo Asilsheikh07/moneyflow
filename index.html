@@ -1424,9 +1424,10 @@ async function startOnline(){
   const r=ONLINE.room;
   if(r.seats.length<2)return toast("Wait for a friend to join, or add a bot");
   const players=r.seats.map((s,k)=>{const pi=s.prof==="-1"?rand(0,PROFS.length-1):+s.prof;const p=newPlayer(s.name,PROFS[pi],k,s.bot,s.dream==="-1"||s.dream==null?undefined:+s.dream);p.uid=s.uid||null;return p;});
-  newGame(players);VIEW=players.findIndex(p=>p.uid===NET.uid);
-  try{await ONLINE.ref.update({status:"playing"});}catch(e){return toast(errMsg(e));}
-  pushState();render();
+  newGame(players);VIEW=players.findIndex(p=>p.uid===NET.uid);G.seq=1;
+  // status and game go out in one write, so no player ever sees "playing" without a game
+  try{await ONLINE.ref.update({status:"playing",gameJson:JSON.stringify(G)});}catch(e){return toast(errMsg(e));}
+  render();
 }
 function onlineCardHTML(){
   let body;
