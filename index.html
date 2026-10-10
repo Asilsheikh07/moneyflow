@@ -533,6 +533,10 @@ const TRAPS=[
  TRAP("mlm","Friend's MLM business","A friend invites you to 'be your own boss' selling wellness products. Starter kit $1,500, then $100 of inventory every month for 6 months.",
   {cost:1500,fee:100,months:6,income:30,lesson:"Multi-level marketing: nearly everyone who joins loses money, because you must keep buying inventory and recruiting friends. Red flags: you pay to join, income depends on recruiting, monthly purchase quotas."}),
 ];
+SMALL.push(
+  DEAL("re","condo",1,"Luxury condo downtown","A brand-new tower with a rooftop pool. The agent says prices here 'only go up'.",260000,52000,-180,2100),
+  DEAL("biz","timeshare",0,"Beach timeshare","Two weeks a year at a resort, forever. Annual maintenance fees are 'small'.",25000,25000,-120));
+BIG.push(DEAL("biz","bigbiz",0,"Trendy restaurant","A celebrity chef wants a partner. It was packed on opening night.",350000,52000,-250,0,"SBA loan"));
 SMALL.push(...TRAPS,()=>stockCard("TMIX"),()=>stockCard("TMIX"));
 const MARKET=[
  ()=>({kind:"hype",up:true}),()=>({kind:"hype",up:false}),
@@ -632,6 +636,26 @@ function mustPay(p,amt,why){
   return borrowed?`<div class="why" style="color:var(--gold-hi)">Cash was short, so you borrowed ${fmt(borrowed)} from the bank (+${fmt(borrowed*BANK_RATE)}/mo).</div>`:"";
 }
 
+/* Real lending: banks never lend the down payment, want cash reserves left over, cap total debt payments at 43% of
+   income (counting the real payment behind every property loan, and only 75% of rent), cap unsecured personal loans
+   at about three months of salary, and only finance big deals for people with some experience. */
+const DTI_RATE={"Mortgage":.0067,"Commercial loan":.0074,"SBA loan":.0135,"Equipment loan":.022,"Car loan":.022,"Business loan":.022};
+const debtLoad=p=>sum(p.loans.map(l=>l.kind==="mort"?(l.dti||0):l.payment));
+const lenderIncome=p=>p.salary+.75*passive(p);
+const dtiOf=(p,extra=0)=>(debtLoad(p)+extra)/Math.max(1,lenderIncome(p));
+const bankLimit=p=>3*p.salary;
+const bankRoom=p=>{const b=p.loans.find(l=>l.kind==="bank");return Math.max(0,bankLimit(p)-(b?b.principal:0));};
+const canBankLend=(p,amt)=>!p.bk&&!fast(p)&&amt<=bankRoom(p)&&dtiOf(p,amt*BANK_RATE)<=.43;
+// bad debt (bank loans, credit cards, retail debt) must be gone before you can leave the rat race
+const badDebt=p=>sum(p.loans.filter(l=>l.kind==="bank"||l.kind==="credit"||l.key==="cc"||l.key==="retail").map(l=>l.principal));
+const experience=p=>p.assets.filter(a=>a.kind==="re"||a.kind==="biz").length+(p.certified?1:0);
+const MIN_DOWN={condo:.2,house21:.2,house32:.2,duplex:.2,plex:.25,bigbiz:.15};
+function realDeal(d){ // real-world down payments; a bigger down payment means a smaller mortgage payment
+  const min=d.loanName==="Commercial loan"?.3:(MIN_DOWN[d.sub]??0);
+  const down=Math.max(d.down,rk(d.cost*min));
+  return down===d.down?d:{...d,down,mortgage:d.cost-down,cf:d.cf+Math.round((down-d.down)*.006)};
+}
+
 /* ================= paydays, bankruptcy, fast track ================= */
 function payday(p){
   const cf=cashflow(p);
@@ -664,7 +688,7 @@ function bankrupt(p){
   G.bkNote={pid:p.id,out:p.out};
 }
 function enterFastTrack(p){
-  p.track="fast";p.pos=0;p.ftIncome=Math.round(passive(p)*100);p.ftTarget=p.ftIncome+50000;p.cash=p.ftIncome;p.ftCharity=false;p.charity=0;
+  p.track="fast";p.pos=0;p.ftIncome=Math.round(passive(p)*12); // a CASHFLOW Day pays a year of passive incomep.ftTarget=p.ftIncome+50000;p.cash=p.ftIncome;p.ftCharity=false;p.charity=0;
   log(`${p.name} escaped the Matrix! CASHFLOW Day income: ${fmt(p.ftIncome)}`,p.id);
   const s=store.get(STATS,{played:0,wins:[],escapes:[]});(s.escapes=s.escapes||[]).push({name:p.name,prof:p.prof,bot:p.bot,months:p.months,date:new Date().toISOString().slice(0,10)});store.set(STATS,s);
 }
@@ -874,7 +898,7 @@ function step(p,n){
 function done(){closeModal();G.phase="end";afterChange();}
 function afterChange(){
   G.players.forEach(p=>{
-    if(!fast(p)&&!p.out&&passive(p)>totalExp(p)){enterFastTrack(p);pendingWins.push({id:p.id,how:"escape"});}
+    if(!fast(p)&&!p.out&&passive(p)>totalExp(p)&&badDebt(p)===0){enterFastTrack(p);pendingWins.push({id:p.id,how:"escape"});}
     if(fast(p)&&p.ftIncome>=p.ftTarget)declareWinner(p,`CASHFLOW Day income reached ${fmt(p.ftIncome)}`);
   });
   render();save();
@@ -939,29 +963,39 @@ function present(p,d){
   if(d.kind==="cd")return cdModal(p,d);
   offerDeal(p,d);
 }
-function offerDeal(p,d){
-  const deck=d.sub==="plex"||d.sub==="bigbiz"?"big":"small",dk=DECK_INFO[deck];
-  const need=Math.max(0,d.down-p.cash),borrow=up1k(need),interest=borrow*BANK_RATE,roi=d.down?Math.round(d.cf*12/d.down*100):0;
+function offerDeal(p,d0){
+  const d=realDeal(d0),big=d.sub==="plex"||d.sub==="bigbiz",dk=DECK_INFO[big?"big":"small"];
+  const dtiPay=d.mortgage?Math.round(d.mortgage*(DTI_RATE[d.loanName]||.0067)):0;
+  const reserveNeed=Math.round((big?2:1)*totalExp(p)),roi=d.down?Math.round(d.cf*12/d.down*100):0;
+  const checks=[];
+  if(p.cash<d.down)checks.push(`You need ${fmt(d.down)} of your own savings for the down payment. Banks don't lend the down payment.`);
+  else if(d.kind!=="land"&&p.cash-d.down<reserveNeed)checks.push(`After the down payment the bank wants ${fmt(reserveNeed)} (${big?2:1} month${big?"s":""} of expenses) left in reserve. You'd have ${fmt(p.cash-d.down)}.`);
+  if(d.mortgage&&dtiOf(p,dtiPay)>.43)checks.push(`The bank declines the loan: your debt payments would reach ${Math.round(dtiOf(p,dtiPay)*100)}% of your income (limit 43%). Pay off debts or grow your income first.`);
+  if(big&&experience(p)<1)checks.push(`Big Deals need experience. Own at least one property or business, or get certified, first.`);
+  const tip=d.kind==="land"?"💡 Land pays nothing while you wait. It only works if a buyer comes later."
+    :d.cf<=0?"💡 Negative cash flow: this takes money out of your pocket every month. An asset should put money in."
+    :roi>=30?"💡 A very high return usually means more risk or more of your own work. Check what could go wrong."
+    :roi>=8?"💡 A healthy deal. Good rentals usually return 8–15% a year on the cash you put in."
+    :"💡 Low return for the risk. An index fund might do as well with no work.";
   const rows=[["Cost",fmt(d.cost)]];
   if(d.mortgage)rows.push([d.loanName,fmt(d.mortgage)]);
-  rows.push(["Down payment",fmt(d.down)],["Cash flow",(d.cf>=0?"+":"")+fmt(d.cf)+"/mo",d.cf>0?"pos":"","hl"]);
-  if(d.down&&d.cf)rows.push(["Return on investment",`${roi}% a year`]);
+  rows.push(["Down payment (your savings)",fmt(d.down)],["Cash flow",(d.cf>=0?"+":"")+fmt(d.cf)+"/mo",d.cf>0?"pos":"neg","hl"]);
+  if(d.down&&d.cf)rows.push(["Return on your cash",`${roi}% a year`,roi>=8?"pos":""]);
   rows.push(["Your cash",fmt(p.cash)]);
+  if(d.mortgage)rows.push(["Debt-to-income after",`${Math.round(dtiOf(p,dtiPay)*100)}% of 43%`,dtiOf(p,dtiPay)>.43?"neg":""]);
   const rentLine=d.rent?`<p style="font-size:12.5px">Rent ${fmt(d.rent)}/mo. Mortgage payment, tax, insurance and repairs: ${fmt(d.rent-d.cf)}/mo.</p>`:"";
-  const blocked=need>0&&p.bk;
-  const acts=[{label:need?`Borrow ${fmt(borrow)} and buy`:"Buy",primary:1,disabled:blocked,fn:()=>{takeLoan(p,borrow);buyDeal(p,d);}},{label:"Pass",fn:done}];
+  const acts=[{label:"Buy",primary:1,disabled:checks.length>0,fn:()=>buyDeal(p,d,dtiPay)},{label:"Pass",fn:done}];
   modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:esc(d.title),
-    body:`<p>${d.text}</p>${facts(rows)}${rentLine}${need?`<div class="why" style="color:var(--gold-hi)">You need ${fmt(need)} more. The bank lends in $1,000 steps at 2% a month: +${fmt(interest)}/mo.</div>`:""}${blocked?`<div class="why">After bankruptcy the bank won't lend for a few turns.</div>`:""}`,actions:acts,
+    body:`<p>${d.text}</p>${facts(rows)}${rentLine}<p class="note" style="color:var(--gold-hi)">${tip}</p>${checks.map(c=>`<div class="why">${c}</div>`).join("")}`,actions:acts,
     bot:()=>{
-      if(d.kind==="land")return p.cash-d.cost>3*reserve(p)?0:1;
-      if(d.cf<=0)return 1;
-      if(!need&&p.cash-d.down>=reserve(p))return 0;
-      return d.cf-interest-(need?reserve(p)*BANK_RATE:0)>0&&!blocked?0:1;}});
+      if(checks.length)return 1;
+      if(d.kind==="land")return p.cash-d.cost>4*totalExp(p)?0:1;
+      return d.cf>0&&roi>=8?0:1;}});
 }
-function buyDeal(p,d){
+function buyDeal(p,d,dtiPay){
   const a={id:uid(),kind:d.kind,sub:d.sub,units:d.units||0,name:d.title,cost:d.cost,down:d.down,income:d.cf||0,img:artOf(d)};
   p.assets.push(a);p.cash-=d.down;
-  if(d.mortgage)p.loans.push({id:uid(),name:`${d.loanName}: ${d.title}`,principal:d.mortgage,payment:0,kind:"mort",assetId:a.id});
+  if(d.mortgage)p.loans.push({id:uid(),name:`${d.loanName}: ${d.title}`,principal:d.mortgage,payment:0,dti:dtiPay||0,kind:"mort",assetId:a.id});
   log(`${p.name} bought ${a.name} (${fmt(d.down)} down)`);sfx.coin();done();
 }
 function trapModal(p,d){
@@ -1005,7 +1039,7 @@ function showLesson(x){
 function courseModal(p,d){
   const dk=DECK_INFO.small,rise=Math.round(p.salary*.1),taxUp=Math.round(rise*.25);
   modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:d.title,body:`<p>${d.text}</p>${facts([["Cost",fmt(-d.cost),"neg"],["Salary",`+${fmt(rise)}/mo`,"pos"],["Extra tax",`+${fmt(taxUp)}/mo`,"neg"],["Cash flow",`+${fmt(rise-taxUp)}/mo`,"pos","hl"]])}`,
-    actions:[{label:"Enroll",primary:1,disabled:p.cash<d.cost,fn:()=>{p.cash-=d.cost;p.salary+=rise;p.tax+=taxUp;log(`${p.name} got certified: salary +${fmt(rise)}`);done();}},{label:"Pass",fn:done}],bot:()=>p.cash>d.cost+reserve(p)?0:1});
+    actions:[{label:"Enroll",primary:1,disabled:p.cash<d.cost,fn:()=>{p.cash-=d.cost;p.salary+=rise;p.tax+=taxUp;p.certified=true;log(`${p.name} got certified: salary +${fmt(rise)}`);done();}},{label:"Pass",fn:done}],bot:()=>p.cash>d.cost+reserve(p)?0:1});
 }
 function cdModal(p,d){
   const dk=DECK_INFO.small,held=p.assets.find(a=>a.kind==="cd");
@@ -1161,18 +1195,20 @@ function handleFast(p){
 const canAct=()=>G&&(G.phase==="roll"||G.phase==="end");
 function bankModal(){
   const p=cur(),b=p.loans.find(l=>l.kind==="bank"),debts=p.loans.filter(l=>l.kind==="debt"||l.kind==="credit");
-  const amts=[1,2,5,10,25,50];
+  const amts=[1,2,5,10];
   modal({kicker:"Bank",icon:"bank",tone:"var(--navy)",title:"Bank",silent:1,body:`
     ${facts([["Your cash",fmt(p.cash)],["Bank loan",b?`${fmt(b.principal)} (${fmt(b.payment)}/mo)`:"none"],["Cash flow",fmt(cashflow(p))+"/mo",cashflow(p)>=0?"pos":"neg"]])}
     <div class="sh">Borrow · $1,000 steps · 2% a month, interest only</div>
-    ${p.bk?`<p class="why">After bankruptcy the bank won't lend for ${p.bk} more turn(s).</p>`:`<div class="amts">${amts.map(a=>`<button class="btn" data-loan="${a}">$${a}k<small>+${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}</div>`}
+    ${facts([["Personal loan limit",`${fmt(bankRoom(p))} left of ${fmt(bankLimit(p))} (3 months of salary)`],["Debt-to-income",`${Math.round(dtiOf(p)*100)}% of 43% max`,dtiOf(p)>.43?"neg":""],["Bad debt",fmt(badDebt(p)),badDebt(p)?"neg":"pos"]])}
+    ${p.bk?`<p class="why">After bankruptcy the bank won't lend for ${p.bk} more turn(s).</p>`:`<div class="amts">${amts.map(a=>`<button class="btn" data-loan="${a}" ${canBankLend(p,a*K)?"":"disabled"}>$${a}k<small>+${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}</div>`}
+    <p class="note">💡 Personal loans are bad debt: they cost you every month and must be paid off before you can leave the rat race.</p>
     ${b?`<div class="sh">Repay bank loan · $1,000 steps</div><div class="amts">${[1,5,10].map(a=>`<button class="btn" data-repay="${a}" ${p.cash<a*K||b.principal<a*K?"disabled":""}>$${a}k<small>−${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}<button class="btn" data-repay="all" ${p.cash<b.principal?"disabled":""}>All<small>${fmt(b.principal)}</small></button></div>`:""}
     <div class="sh">Pay off debts · in full only</div>
     ${debts.length?debts.map(l=>`<div class="asset"><div class="thumb">${svg("bank")}</div><div style="min-width:0"><div>${esc(l.name)}</div><div class="meta">balance ${fmt(l.principal)} · ${fmt(l.payment)}/mo</div></div><span></span><button class="btn sm" data-payoff="${l.id}" ${p.cash<l.principal?"disabled":""}>Pay ${fmt(l.principal)}</button></div>`).join(""):`<div class="empty">No debts.</div>`}
     <p class="note">Taxes, other expenses and child costs can't be reduced.</p>`,
     actions:[{label:"Close",primary:1,fn:()=>afterChange()}],
     onBody:e=>{const btn=e.target.closest("button");if(!btn)return;
-      if(btn.dataset.loan){takeLoan(p,+btn.dataset.loan*K);sfx.coin();}
+      if(btn.dataset.loan){if(!canBankLend(p,+btn.dataset.loan*K))return toast("The bank declined. Check your limit and debt-to-income.");takeLoan(p,+btn.dataset.loan*K);sfx.coin();}
       if(btn.dataset.repay){repayBank(p,btn.dataset.repay==="all"?b.principal:+btn.dataset.repay*K);}
       if(btn.dataset.payoff){const l=p.loans.find(x=>x.id===btn.dataset.payoff);if(l)payOffDebt(p,l);}
       save();bankModal();}});
@@ -1370,7 +1406,8 @@ function ledgerHTML(v){
       <div class="kpi"><div class="k">Cash flow</div><div class="v ${cf>=0?"pos":"neg"}">${cf>=0?"+":""}${fmt(cf)}</div></div>
       <div class="kpi"><div class="k">Net worth</div><div class="v">${fmt(netWorth(v))}</div></div></div>
     <div class="meter"><div class="bar" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="Passive income compared with total expenses"><div class="fill" style="width:${pct}%"></div></div>
-      <div class="cap"><span>Passive <b class="num">${fmt(pas)}</b></span><span>Total expenses <b class="num">${fmt(ex)}</b></span></div></div>
+      <div class="cap"><span>Passive <b class="num">${fmt(pas)}</b></span><span>Total expenses <b class="num">${fmt(ex)}</b></span></div>
+      <div class="cap"><span>Bad debt to clear <b class="num ${badDebt(v)?"neg":"pos"}">${fmt(badDebt(v))}</b></span><span>Experience <b class="num">${experience(v)}</b></span></div></div>
     <div class="muted" style="font-size:12px;margin-top:6px">Dream: ${esc(DREAMS[v.dream].name)} · ${fmt(dreamPrice(v))}</div></div>
   ${offerActive()&&v.assets.some(a=>offerMatch(G.offer,a))?`<div class="lsec">${offerRowsFor(v,canSellFor(v))}</div>`:""}
   <div class="lsec"><div class="lt"><span>Income statement</span><span>monthly</span></div>
@@ -1418,13 +1455,13 @@ function guideHTML(){
   const li=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   return `<div class="eyebrow">Rules</div><h1 style="font-size:40px;margin:4px 0 16px">How to play</h1>
   <div class="guide">
-    <div class="card"><h3>Goal</h3><p>First leave the rat race: make passive income (rent, business cash flow, dividends, interest) bigger than your total expenses. Then, on the Fast Track, buy your Dream or add $50,000 to your CASHFLOW Day income.</p></div>
+    <div class="card"><h3>Goal</h3><p>First leave the rat race: make passive income (rent, business cash flow, dividends, interest) bigger than your total expenses, and pay off all bad debt (bank loans, credit cards, retail debt). Then, on the Fast Track, buy your Dream or add $50,000 to your CASHFLOW Day income.</p></div>
     <div class="card"><h3>Setup</h3>${li(["Each player gets a job with a full income statement and balance sheet.","Start cash is savings plus one month of cash flow.","Each player picks a Dream that waits on the Fast Track."])}</div>
     <div class="card"><h3>Rat race spaces</h3>${li(["Payday: passing or landing pays your monthly cash flow.","Opportunity: draw a Small Deal or a Big Deal.","Market: buyers and price changes. They apply to every player until the next roll.","Doodad: an expense you must pay.","Charity: give 10% of income to roll 1 or 2 dice for 3 turns.","Baby: add the cost of a child, up to 3.","Downsized: benefits cover half; you pay half a month of expenses and miss 1 turn."])}</div>
     <div class="card"><h3>Buying and selling</h3>${li(["You pay only the down payment. The mortgage goes to your liabilities.","A deal's cash flow already includes the mortgage payment.","When a buyer appears, you receive the price minus the mortgage.","Stock prices on a card are valid for everyone until the next roll."])}</div>
-    <div class="card"><h3>Bank</h3>${li(["Borrow in $1,000 steps. Interest is 2% a month and is added to your expenses.","Repay bank loans in $1,000 steps.","Other debts (mortgage, school, car, credit cards, retail) are paid off in full only.","Taxes, other expenses and child costs can't be reduced."])}</div>
+    <div class="card"><h3>Bank</h3>${li(["Borrow in $1,000 steps at 2% a month, up to about 3 months of salary, only while your debt payments stay under 43% of income.","Banks never lend the down payment, and want 1 month of expenses (2 for Big Deals) left in reserve after you buy.","Big Deals need experience: own a property or business, or get certified, first.","Repay bank loans in $1,000 steps.","Other debts (mortgage, school, car, credit cards, retail) are paid off in full only.","Taxes, other expenses and child costs can't be reduced."])}</div>
     <div class="card"><h3>Bankruptcy</h3>${li(["If cash flow is negative on Payday and you can't pay, you go bankrupt.","Assets are sold to the bank for half their down payment to pay debts. You miss 3 turns.","If cash flow is still negative, car, credit card and retail debts are halved.","If it is still negative, you are out of the game."])}</div>
-    <div class="card"><h3>Fast Track</h3>${li(["Your CASHFLOW Day income is 100 times your passive income. That is also your starting cash.","Roll 2 dice. Buy businesses to raise CASHFLOW Day income. Each business can be bought once.","Land on your Dream with enough cash to buy it and win. Landing on someone else's Dream raises its price for them by 100%.","Charity lets you roll 1–3 dice. Tax audit and lawsuit take half your cash. Divorce takes all of it.","There are no bank loans on the Fast Track."])}</div>
+    <div class="card"><h3>Fast Track</h3>${li(["Your CASHFLOW Day pays a full year of passive income (12 months). That is also your starting cash.","Roll 2 dice. Buy businesses to raise CASHFLOW Day income. Each business can be bought once.","Land on your Dream with enough cash to buy it and win. Landing on someone else's Dream raises its price for them by 100%.","Charity lets you roll 1–3 dice. Tax audit and lawsuit take half your cash. Divorce takes all of it.","There are no bank loans on the Fast Track."])}</div>
   </div>
   <div class="card" style="margin-top:14px"><h3 style="font-size:20px;margin-bottom:8px">💡 Money lessons in this game</h3>${li(["Assets put money in your pocket; liabilities take it out. A big house or a new car is usually a liability.","Guaranteed high returns are a red flag. Real investments go up and down.","Tips from strangers and chat groups are how pump-and-dumps find buyers.","If you must pay to join and recruit friends to earn, it is probably an MLM.","A low-cost index fund grows slowly but beats most traders over time.","Crowds overreact: hype pushes prices too high, panic pushes them too low.","Keep an emergency fund of 3–6 months of expenses before investing.","Expensive debt (credit cards, personal loans) is usually the first thing to pay off."])}</div>
   <div class="card" style="margin-top:14px"><h3 style="font-size:20px;margin-bottom:8px">Jobs</h3>${jobsTable()}</div>`;
