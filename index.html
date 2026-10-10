@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MoneyFlow</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: finance-app shell (rail + content), dark graphite UI like a trading app.
+   The board is a physical object: lacquered frame and felt on a walnut table, printed ivory spaces, ivory dice.
+   Cards open as photo cards (image header, data below). Single dark look by choice. */
+:root{
+  color-scheme:dark;
+  --bg:#0a0d12; --surface:#121720; --surface2:#19202c; --surface3:#202938; --line:#273142; --ink:#eef2f8; --muted:#8e98ac;
+  --gold:#d6b064; --gold-hi:#f1d898; --gold-lo:#9c7a33; --gold-ink:#1d1405;
+  --foil:linear-gradient(135deg,#8a6a22 0%,#e6cc84 30%,#b8913a 50%,#f3e2a8 72%,#8a6a22 100%);
+  --good:#34c98a; --bad:#f06552; --blue:#5b9bff; --blue-soft:rgba(91,155,255,.14);
+  --paper:#f6efdf; --paper2:#ece2cb; --print:#1d2433; --felt:#123a33; --felt2:#0b2722;
+  --c-opp:#1f9a64; --c-mkt:#d39a1c; --c-doo:#d64d72; --c-pay:#0f2d5c; --c-char:#2b9aa9; --c-baby:#4f86e0; --c-down:#6f7787;
+  --p1:#ff6a45; --p2:#4f93ff; --p3:#b27bff; --p4:#36d08c;
+  --shadow:0 20px 50px rgba(0,0,0,.55);
+  --f-display:"Playfair Display",Georgia,serif;
+  --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --navy:#0f2d5c; --navy2:#081a38;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:radial-gradient(1100px 560px at 80% -15%,rgba(214,176,100,.10),transparent 60%),radial-gradient(900px 500px at -10% 110%,rgba(91,155,255,.07),transparent 60%),var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:10px 16px;font-weight:700;font-size:14px;transition:transform .12s,border-color .12s,background .12s}
+.btn:hover:not(:disabled){border-color:var(--gold-lo);background:var(--surface3)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:linear-gradient(180deg,#f0d38e,#c99a45);border-color:#e8c77a;color:var(--gold-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 8px 24px rgba(214,176,100,.25)}
+.btn.primary:hover:not(:disabled){background:linear-gradient(180deg,#f6dea3,#d2a552)}
+.btn.primary:active:not(:disabled){transform:translateY(1px)}
+.btn.danger{color:var(--bad);border-color:rgba(240,101,82,.5)}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:9px}
+.btn.big{padding:13px 26px;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+
+/* shell */
+.shell{display:grid;grid-template-columns:88px minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 8px;background:rgba(18,23,32,.85);backdrop-filter:blur(10px);border-right:1px solid var(--line)}
+.logo{width:48px;height:48px;border-radius:14px;background:var(--foil);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;color:var(--gold-ink);font-size:22px;margin-bottom:16px;box-shadow:0 8px 20px rgba(214,176,100,.25)}
+.nav{width:100%;border:0;background:transparent;border-radius:12px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:11px;font-weight:700}
+.nav svg{width:22px;height:22px}
+.nav:hover{color:var(--ink);background:var(--surface2)}
+.nav.on{color:var(--gold-hi);background:var(--surface2);box-shadow:inset 2px 0 0 var(--gold)}
+.content{min-width:0;padding-inline:16px;padding-block:22px 40px}
+.inner{max-width:1360px;margin:0 auto}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:fixed;inset:auto 0 0 0;top:auto;height:auto;flex-direction:row;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--line);z-index:30}
+  .logo{display:none}
+  .nav{padding:6px 2px;font-size:10px}
+  .nav.on{box-shadow:inset 0 2px 0 var(--gold)}
+  .content{padding-block:14px 96px}
+}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-weight:800}
+.card{background:linear-gradient(180deg,var(--surface),#10151d);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0}
+.muted{color:var(--muted)}
+
+/* home */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:24px;align-items:center;margin-bottom:24px}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(46px,7.5vw,96px);line-height:.95;margin:12px 0 10px;background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{font-family:var(--f-display);font-style:italic;font-size:clamp(18px,2.2vw,24px);color:var(--ink);margin-bottom:14px}
+.hero p{max-width:52ch;color:var(--muted);font-size:16px;margin:0 0 22px}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+.preview{perspective:1300px;display:grid;place-items:center;overflow:hidden;padding:30px 10px;border-radius:22px}
+.preview .board{width:min(470px,94%);transform:rotateX(46deg) rotateZ(-14deg);margin-block:-10%}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.tile h3{font-size:20px;margin:4px 0 6px}
+.tile p{margin:0;color:var(--muted);font-size:14px}
+.stat{font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--gold-hi)}
+
+/* setup */
+.setup{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1020px){.setup{grid-template-columns:1fr}}
+.prow{display:grid;grid-template-columns:16px minmax(0,1fr) minmax(0,.7fr) minmax(0,1.2fr);gap:8px;align-items:center;margin-bottom:8px}
+@media (max-width:540px){.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,1fr)}.prow .job{grid-column:2/4}}
+.field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px}
+.dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 0 2px var(--surface),0 0 0 3px rgba(214,176,100,.6)}
+.ptable{width:100%;border-collapse:collapse;font-size:13px}
+.ptable th,.ptable td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.ptable th:first-child,.ptable td:first-child{text-align:left;white-space:normal}
+.ptable th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tbl{overflow-x:auto}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.inl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* play */
+.play{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:18px;align-items:start}
+@media (max-width:1120px){.play{grid-template-columns:1fr}}
+.hud{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;font-size:13px;min-width:0}
+.chip.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 6px 18px rgba(214,176,100,.18)}
+.chip b{font-weight:800}
+.chip .c{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.chip .tag{font-size:9.5px;letter-spacing:.08em;font-weight:800;border-radius:5px;padding:1px 5px;background:var(--blue-soft);color:var(--blue)}
+.chip .free{background:var(--foil);color:var(--gold-ink)}
+.hud .spacer{flex:1}
+/* walnut table under the board */
+.stagewrap{position:relative;border:1px solid var(--line);border-radius:24px;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 35%,rgba(255,220,170,.10),transparent 65%),
+    repeating-linear-gradient(91deg,rgba(0,0,0,.18) 0 2px,transparent 2px 9px,rgba(255,255,255,.025) 9px 11px,transparent 11px 23px),
+    linear-gradient(180deg,#3a2718,#22160d)}
+.preview{background:radial-gradient(ellipse at 50% 40%,rgba(255,220,170,.10),transparent 65%),repeating-linear-gradient(91deg,rgba(0,0,0,.18) 0 2px,transparent 2px 9px,rgba(255,255,255,.025) 9px 11px,transparent 11px 23px),linear-gradient(180deg,#3a2718,#22160d)}
+.stage{perspective:1600px;perspective-origin:50% 12%;padding:22px;display:grid;place-items:center}
+.board{position:relative;width:min(100%,720px);aspect-ratio:1;display:grid;grid-template-columns:1.3fr repeat(5,minmax(0,1fr)) 1.3fr;grid-template-rows:1.3fr repeat(5,minmax(0,1fr)) 1.3fr;gap:4px;padding:14px;border-radius:16px;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.2,.8,.2,1);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(circle at 50% 42%,#1c5246 0,var(--felt) 50%,var(--felt2) 100%);
+  box-shadow:inset 0 0 0 3px #0b0806,inset 0 0 0 5px var(--gold-lo),inset 0 0 0 9px #1a120c,inset 0 0 0 10px rgba(241,216,152,.35),inset 0 0 40px rgba(0,0,0,.6)}
+.board::after{content:"";position:absolute;inset:-6px;border-radius:20px;transform:translateZ(-24px);background:linear-gradient(135deg,#2a1b10,#120b06);box-shadow:0 50px 60px rgba(0,0,0,.65)}
+.fx .board{transform:rotateX(44deg);margin-block:-7%}
+.cell{position:relative;border-radius:6px;background:linear-gradient(170deg,var(--paper),var(--paper2));color:var(--print);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px;min-width:0;min-height:0;
+  transform-style:preserve-3d;transform:translateZ(2px);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),inset 0 3px 0 var(--tc),0 2px 0 rgba(0,0,0,.45),0 4px 8px rgba(0,0,0,.25)}
+.cell svg{width:clamp(12px,2.5vw,25px);height:clamp(12px,2.5vw,25px);color:var(--tc);flex:none}
+.cell .lbl{font-size:clamp(4.5px,.72vw,8.5px);font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--print);opacity:.85;text-align:center;line-height:1.05;white-space:nowrap}
+.cell.corner svg{width:clamp(16px,3.4vw,36px);height:clamp(16px,3.4vw,36px)}
+.cell.corner .lbl{font-size:clamp(6.5px,1vw,12px)}
+.cell.pay{background:linear-gradient(150deg,#163a72,var(--navy2));box-shadow:inset 0 0 0 1px var(--gold),inset 0 0 0 4px var(--navy2),inset 0 0 0 5px rgba(241,216,152,.5),0 2px 0 rgba(0,0,0,.45)}
+.cell.pay svg,.cell.pay .lbl{color:var(--gold-hi);opacity:1}
+.cell.here{box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),inset 0 3px 0 var(--tc),0 0 0 3px var(--gold-hi),0 0 22px rgba(241,216,152,.75)}
+.pawns{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+.pawn{position:absolute;width:30%;aspect-ratio:1;transform-style:preserve-3d}
+.pawn::before{content:"";position:absolute;inset:6%;border-radius:50%;background:rgba(0,0,0,.6);filter:blur(3px)}
+.pawn i{position:absolute;inset:0;border-radius:50%;background:var(--pc);filter:brightness(.6);border:1px solid rgba(0,0,0,.35)}
+.pawn i:last-child{filter:none;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.75),transparent 42%),radial-gradient(circle at 60% 70%,rgba(0,0,0,.25),transparent 60%),var(--pc);box-shadow:inset 0 0 0 2px rgba(241,216,152,.9)}
+.pawn.hop{animation:hop .22s ease-out}
+@keyframes hop{50%{translate:0 0 22px}}
+.center{grid-row:2/7;grid-column:2/7;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr 1fr;gap:6%;padding:4% 10% 7%;transform-style:preserve-3d}
+.center .brand{grid-column:1/3;text-align:center;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:clamp(16px,4vw,46px);background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent;transform:translateZ(1px);line-height:1.05;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.deck{position:relative;transform-style:preserve-3d;min-height:0}
+.deck i{position:absolute;inset:0;border-radius:8px;background:#f2ead8;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.deck i:last-child{background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.55)),repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 4px,transparent 4px 8px),var(--dk);box-shadow:inset 0 0 0 1.5px var(--gold-hi),inset 0 0 0 4px var(--dk),inset 0 0 0 5px rgba(255,255,255,.45),0 3px 6px rgba(0,0,0,.4);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-family:var(--f-display);font-weight:700;font-size:clamp(6.5px,1.15vw,13px);text-align:center;padding:6px 4px;color:#fff;line-height:1.1}
+.deck i:last-child small{font-family:var(--f-mono);font-weight:400;font-size:.75em;opacity:.85;margin-top:3px}
+.deck.drawn i:last-child{animation:lift .6s ease-out}
+@keyframes lift{40%{translate:0 0 40px;rotate:0 0 1 8deg}}
+
+.controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid rgba(255,255,255,.06);background:rgba(10,13,18,.75);backdrop-filter:blur(10px)}
+.controls .msg{flex:1 1 180px;min-width:0;font-size:14px;color:var(--muted)}
+.controls .msg b{color:var(--ink)}
+.controls .msg.warn{color:var(--bad);font-weight:700}
+.controls .acts{display:flex;gap:8px;flex-wrap:wrap}
+.dice{display:flex;gap:14px;perspective:600px;padding:4px}
+.cube{width:44px;height:44px;position:relative;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.2,.9,.25,1.05)}
+.cube .f{position:absolute;inset:0;background:radial-gradient(circle at 30% 25%,#fffdf7,#efe5cf);border-radius:10px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15),inset 0 -3px 6px rgba(0,0,0,.12)}
+.cube .f b{width:66%;aspect-ratio:1;margin:auto;border-radius:50%}
+.cube .f b.on{background:radial-gradient(circle at 40% 35%,#3b4152,#0d1018);box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}
+.cube .f1 b.on{background:radial-gradient(circle at 40% 35%,#e14c3c,#8f1d12)}
+.cube .f1{transform:translateZ(22px)} .cube .f6{transform:rotateY(180deg) translateZ(22px)}
+.cube .f2{transform:rotateY(90deg) translateZ(22px)} .cube .f5{transform:rotateY(-90deg) translateZ(22px)}
+.cube .f3{transform:rotateX(90deg) translateZ(22px)} .cube .f4{transform:rotateX(-90deg) translateZ(22px)}
+
+/* ledger */
+.ledger{background:linear-gradient(180deg,var(--surface),#0f141b);border:1px solid var(--line);border-radius:20px;overflow:hidden;min-width:0}
+.ptabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto;background:var(--bg)}
+.ptab{flex:1;min-width:0;border:0;background:transparent;padding:10px 8px;font-size:13px;font-weight:700;color:var(--muted);display:flex;gap:6px;align-items:center;justify-content:center;border-bottom:2px solid transparent;white-space:nowrap}
+.ptab.on{color:var(--ink);border-bottom-color:var(--gold);background:var(--surface)}
+.lsec{padding:14px 18px;border-bottom:1px solid var(--line)}
+.lsec:last-child{border-bottom:0}
+.lhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lhead .nm{font-family:var(--f-display);font-weight:700;font-size:22px;overflow-wrap:anywhere}
+.lhead .pr{font-size:12.5px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.kpi{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+.kpi .k{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.kpi .v{font-family:var(--f-mono);font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.meter{margin-top:12px}
+.meter .bar{height:10px;border-radius:6px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.meter .fill{height:100%;background:var(--foil);transition:width .5s}
+.meter .cap{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px;gap:8px;flex-wrap:wrap}
+.lt{font-family:var(--f-display);font-size:16px;font-weight:700;margin:0 0 6px;display:flex;justify-content:space-between;align-items:baseline}
+.lt span:last-child{font-family:var(--f-body);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.sh{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:10px 0 3px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;font-size:13px;padding:2px 0;align-items:center}
+.row .l{overflow-wrap:anywhere}
+.row .l small{color:var(--muted)}
+.row .r{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.row.total{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:800}
+.asset{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;font-size:13px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.thumb{width:40px;height:40px;border-radius:9px;background:var(--art,none) center/cover,linear-gradient(135deg,var(--surface3),var(--surface2));display:grid;place-items:center;color:var(--gold);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.thumb svg{width:18px;height:18px}
+.thumb.has svg{display:none}
+.asset .meta{font-size:11.5px;color:var(--muted)}
+.empty{font-size:12.5px;color:var(--muted)}
+.log{max-height:200px;overflow:auto;display:grid;gap:4px;font-size:12.5px}
+.log div{display:grid;grid-template-columns:8px minmax(0,1fr);gap:8px}
+.log .d{width:8px;height:8px;border-radius:50%;margin-top:6px}
+.spark{display:block;width:100%;height:44px}
+
+/* photo cards */
+.overlay{position:fixed;inset:0;background:rgba(3,5,9,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;perspective:1200px}
+.modal{background:linear-gradient(180deg,var(--surface),#0f141b);border:1px solid var(--line);border-radius:22px;max-width:440px;width:100%;max-height:calc(100% - 20px);overflow:auto;box-shadow:var(--shadow);animation:flip .55s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes flip{from{transform:rotateY(-90deg) translateZ(-140px);opacity:0}to{transform:none;opacity:1}}
+.modal .mtop{position:relative;min-height:84px;display:flex;flex-direction:column;justify-content:flex-end;padding:14px 20px 16px;color:#fff;
+  background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.8)),var(--art,none) center/cover,radial-gradient(circle at 80% 0%,rgba(255,255,255,.18),transparent 55%),var(--tone,var(--navy));border-bottom:2px solid var(--tone,var(--gold))}
+.modal .mtop.photo{min-height:190px}
+.modal .kick{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:var(--gold-hi);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.modal .kick svg{width:16px;height:16px}
+.modal h3{font-size:26px;line-height:1.12;margin-top:6px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.modal .mb{padding:14px 20px}
+.modal p{margin:0 0 10px;color:var(--muted)}
+.modal .botnote{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px}
+.facts{display:grid;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.facts .row.hl{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:800}
+.why{font-size:12.5px;color:var(--bad);margin-top:4px}
+.modal .acts{display:flex;flex-wrap:wrap;gap:10px;padding:0 20px 20px}
+.modal .acts .btn{flex:1 1 auto}
+.amts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin:6px 0 12px}
+.amts .btn{display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.amts .btn small{font-weight:500;color:var(--muted);font-size:11px}
+.toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:rgba(18,23,32,.95);color:var(--gold-hi);padding:10px 20px;border-radius:999px;font-weight:800;font-size:14px;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow),inset 0 0 0 1px var(--gold-lo);animation:drop .3s}
+@keyframes drop{from{transform:translate(-50%,-20px);opacity:0}}
+.coin{position:fixed;z-index:70;width:18px;height:18px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#fff3c4,#e2b650 45%,#9c7a33);box-shadow:0 0 0 1px #7a5c1e,0 2px 6px rgba(0,0,0,.5);animation:fly .9s cubic-bezier(.3,.7,.4,1) forwards}
+@keyframes fly{0%{transform:translate(0,0) scale(.6);opacity:0}15%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.9);opacity:0}}
+.switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.switch:last-child{border-bottom:0}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:700;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--gold);color:var(--gold-ink)}
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.guide .card h3{font-size:20px;margin-bottom:8px}
+.guide .card p,.guide .card li{color:var(--muted);font-size:14px}
+.guide ul{padding-left:18px;margin:0}
+.decklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
+.decklist div{border-radius:12px;padding:12px 14px;color:#fff;font-weight:700;box-shadow:inset 0 0 0 1.5px var(--gold-hi),inset 0 0 0 4px var(--dk),inset 0 0 0 5px rgba(255,255,255,.4);background:var(--dk)}
+.decklist small{display:block;font-weight:500;opacity:.9;margin-top:2px}
+
+/* empire */
+.emp-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:18px;margin-bottom:18px}
+@media (max-width:900px){.emp-head{grid-template-columns:1fr}}
+.networth{font-family:var(--f-mono);font-size:clamp(34px,5vw,54px);font-weight:600;line-height:1.05;margin:6px 0 4px}
+.chart{width:100%;height:180px;display:block}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.ecard{border-radius:16px;overflow:hidden;background:var(--surface);border:1px solid var(--line);min-width:0}
+.ecard .pic{aspect-ratio:16/10;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.7)),var(--art,none) center/cover,linear-gradient(135deg,var(--surface3),var(--surface2));display:flex;align-items:flex-end;justify-content:space-between;padding:10px 12px;color:#fff;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.ecard .pic svg{width:34px;height:34px;color:var(--gold);opacity:.6;align-self:center;margin:auto}
+.ecard .pic.has svg{display:none}
+.ecard .info{padding:10px 12px}
+.ecard .info b{display:block;font-size:14px;overflow-wrap:anywhere}
+.ecard .info .row{font-size:12.5px}
+.portfolio .asset{grid-template-columns:40px minmax(0,1fr) 110px auto}
+
+/* phone app layout */
+.mini,.sheet-grab,.sheet-bg,.menu-m{display:none}
+.install{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}
+.install div{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px}
+.install ol{margin:6px 0 0;padding-left:18px;color:var(--muted)}
+@media (max-width:760px){
+  button,select,input{touch-action:manipulation}
+  body{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+  body.ingame{overscroll-behavior:none}
+  body.ingame .rail{display:none}
+  body.ingame .content{padding-inline:8px;padding-block:8px calc(170px + env(safe-area-inset-bottom,0px))}
+  body.ingame .hud{flex-wrap:nowrap;overflow-x:auto;margin-bottom:8px;scrollbar-width:none;padding-bottom:2px}
+  body.ingame .hud::-webkit-scrollbar{display:none}
+  body.ingame .hud>*{flex:none}
+  .menu-m{display:inline-flex}
+  .stagewrap{border-radius:18px}
+  .stage{padding:12px 6px}
+  .fx .board{transform:rotateX(26deg);margin-block:-2%}
+  .board{gap:3px;padding:9px;border-radius:12px}
+  .cell .lbl{display:none}
+  .cell.corner .lbl{display:block;font-size:6.5px}
+  .cell svg{width:19px;height:19px}
+  .cell.corner svg{width:24px;height:24px}
+  .deck i:last-child{font-size:8.5px}
+  .controls{position:fixed;left:0;right:0;bottom:0;z-index:35;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));border-radius:20px 20px 0 0;border:1px solid var(--line);background:rgba(14,18,25,.96);box-shadow:0 -10px 30px rgba(0,0,0,.5);gap:10px}
+  .controls .msg{flex:1 1 100%;order:-1;font-size:13px}
+  .controls .acts{flex:1;justify-content:flex-end}
+  .controls .acts .btn.big{padding:15px 26px}
+  .mini{order:-2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:center;gap:6px;flex:1 1 100%;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:7px 10px;text-align:left}
+  .mini span{display:flex;flex-direction:column;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800;min-width:0}
+  .mini b{font-family:var(--f-mono);font-size:14px;letter-spacing:0;text-transform:none;color:var(--ink)}
+  .mini i{font-style:normal;font-size:12px;font-weight:800;color:var(--gold)}
+  .ledger{position:fixed;left:0;right:0;bottom:0;z-index:45;max-height:86vh;overflow:auto;border-radius:22px 22px 0 0;transform:translateY(110%);transition:transform .3s cubic-bezier(.2,.9,.3,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .ledger.open{transform:none}
+  .sheet-grab{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;position:sticky;top:0;background:var(--surface);z-index:1;border-bottom:1px solid var(--line)}
+  .sheet-grab b{font-family:var(--f-display);font-size:18px}
+  .sheet-bg{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:44}
+  .overlay{align-items:flex-end;padding:0}
+  .modal{border-radius:24px 24px 0 0;max-height:92vh;animation:sheet .35s cubic-bezier(.2,.9,.3,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+  @keyframes sheet{from{transform:translateY(100%)}}
+  .modal .acts .btn{min-height:50px;font-size:15px;flex:1 1 100%}
+  .field{font-size:16px}
+  .portfolio .asset{grid-template-columns:40px minmax(0,1fr) auto}
+  .portfolio .spark{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<style>
+/* additions for the rulebook version: 5-column setup rows, open-offer box, fast-track board */
+.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,.6fr) minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,1fr)}.prow .job,.prow .drm{grid-column:2/4}}
+.offer{border:1px solid var(--gold-lo);background:linear-gradient(180deg,rgba(214,176,100,.12),rgba(214,176,100,.03));border-radius:14px;padding:12px 14px;margin:0 0 4px}
+.offer b.t{display:block;font-size:13px;color:var(--gold-hi);margin-bottom:4px}
+.offer .asset{grid-template-columns:40px minmax(0,1fr) auto auto}
+.board.ft{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(circle at 50% 42%,#3a2a66 0,#24183f 55%,#140d24 100%)}
+.cell.owned::after{content:"";position:absolute;right:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--owner);box-shadow:0 0 0 2px var(--paper)}
+.cell .price{font-family:var(--f-mono);font-size:clamp(4.5px,.7vw,8.5px);color:var(--print);opacity:.7}
+.ftinfo{grid-column:1/3;grid-row:2/4;display:grid;align-content:center;gap:8px;text-align:center;color:#e9e2ff;font-size:clamp(7px,1.25vw,14px)}
+.ftinfo b{color:var(--gold-hi)}
+.track{font-size:9.5px;letter-spacing:.08em;font-weight:800;border-radius:5px;padding:1px 5px;background:var(--foil);color:var(--gold-ink)}
+@media (max-width:760px){.cell .price{display:none}}
+</style>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Main"></nav>
+  <main class="content"><div class="inner" id="view"></div></main>
+</div>
+<div class="overlay" id="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const K=1e3, SAVE="mf.game.v3", PREF="mf.prefs.v1", STATS="mf.stats.v1", BANK_RATE=.10, MAX_KIDS=3;
+const uid=()=>Math.random().toString(36).slice(2,9);
+const rand=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const sum=a=>a.reduce((s,x)=>s+x,0);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function fmt(n){const a=Math.abs(n),s=n<0?"−":"";
+  if(a>=1e6)return s+"$"+(a/1e6).toFixed(2).replace(/\.?0+$/,"")+"M";
+  if(a>=1e5)return s+"$"+Math.round(a/1e3)+"k";
+  return s+"$"+Math.round(a).toLocaleString("en-US");}
+const r10=x=>Math.round(x/10)*10, rk=x=>Math.round(x/1000)*1000, up1k=x=>Math.ceil(x/1000)*1000;
+const PCOL=["var(--p1)","var(--p2)","var(--p3)","var(--p4)"];
+let prefs=Object.assign({fx:true,fast:false,sound:true},store.get(PREF,{}));
+const savePrefs=()=>store.set(PREF,prefs);
+
+/* ================= sound (synthesized) ================= */
+let AC=null;
+function ac(){if(!prefs.sound)return null;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();return AC}catch(e){return null}}
+function tone(f,dur,type="sine",vol=.12,when=0){const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+when;
+  o.type=type;o.frequency.setValueAtTime(f,t0);g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+dur+.02);}
+function noise(dur,vol=.12,freq=2500,when=0){const c=ac();if(!c)return;const b=c.createBuffer(1,Math.ceil(c.sampleRate*dur),c.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t0=c.currentTime+when;
+  f.type="bandpass";f.frequency.value=freq;g.gain.value=vol;s.buffer=b;s.connect(f).connect(g).connect(c.destination);s.start(t0);}
+const sfx={
+  roll(){for(let i=0;i<7;i++)noise(.05,.18,1200+Math.random()*1800,i*.11);},
+  step(){tone(560,.06,"triangle",.07);},
+  coin(){tone(988,.08,"square",.045);tone(1319,.18,"square",.045,.07);},
+  card(){noise(.2,.1,5200);},
+  bad(){tone(196,.3,"sawtooth",.045);tone(147,.35,"sawtooth",.045,.12);},
+  win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.28,"triangle",.1,i*.11));},
+  click(){tone(740,.03,"triangle",.045);},
+};
+let WL=null;
+function keepAwake(){try{if(!WL||WL.released)navigator.wakeLock?.request("screen").then(l=>WL=l,()=>{});}catch(e){}}
+function buzz(p){try{navigator.vibrate?.(p);}catch(e){}}
+
+/* ================= icons ================= */
+const IC={
+  opp:'<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.4l-5.6 2.9 1.1-6.2L3 9.7l6.2-.9z"/>',
+  big:'<path d="M4 21V9l8-5 8 5v12M9 21v-5h6v5M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/>',
+  doodad:'<path d="M5.5 8h13l-1.2 12.5H6.7z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  market:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  pay:'<circle cx="12" cy="12" r="9"/><path d="M15 9.4c-.5-.9-1.6-1.4-3-1.4-1.7 0-3 .9-3 2.1 0 2.9 6 1.4 6 4.3 0 1.2-1.3 2.1-3 2.1-1.4 0-2.6-.6-3-1.6M12 6.3v11.4"/>',
+  charity:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  baby:'<circle cx="12" cy="8" r="4"/><path d="M5 21c1-4 4-6 7-6s6 2 7 6"/>',
+  down:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9.5 14L12 16.5l2.5-2.5"/>',
+  bank:'<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/>',
+  dream:'<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>',
+  audit:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+  law:'<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>',
+  divorce:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M12 7.4l-1.5 3 3 2-1.5 3"/>',
+};
+const svg=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
+
+/* ================= professions: a CASHFLOW-style income statement =================
+   salary, taxes, other expenses, cost per child, savings, and debts as [balance, monthly payment] */
+const DEBT={mort:"Home mortgage",school:"School loan",car:"Car loan",cc:"Credit cards",retail:"Retail debt"};
+const P=(name,salary,tax,other,child,savings,debts)=>({name,salary,tax,other,child,savings,debts});
+const PROFS=[
+ P("Janitor",3400,520,1050,180,600,{mort:[70000,450],car:[6000,120],cc:[2000,60],retail:[1000,50]}),
+ P("Teacher",4500,860,1250,250,400,{mort:[95000,600],school:[26000,260],car:[8000,160],cc:[3000,90],retail:[1000,50]}),
+ P("Chef",4600,880,1300,260,500,{mort:[98000,620],car:[10000,200],cc:[5000,150],retail:[1000,50]}),
+ P("Mechanic",5200,1000,1400,290,700,{mort:[110000,700],car:[12000,240],cc:[4000,120],retail:[1000,50]}),
+ P("Truck driver",5800,1150,1550,320,750,{mort:[120000,760],car:[15000,300],cc:[5000,150],retail:[1000,50]}),
+ P("Graphic designer",6000,1200,1600,330,900,{mort:[125000,800],school:[30000,300],car:[11000,220],cc:[6000,180],retail:[1000,50]}),
+ P("Police officer",6300,1260,1700,350,800,{mort:[135000,850],car:[14000,280],cc:[5000,150],retail:[1000,50]}),
+ P("Nurse",6600,1320,1750,360,600,{mort:[142000,900],school:[40000,400],car:[13000,260],cc:[6000,180],retail:[1000,50]}),
+ P("Accountant",7800,1700,2050,420,1500,{mort:[175000,1100],school:[45000,450],car:[15000,300],cc:[7000,210],retail:[1000,50]}),
+ P("Sales manager",10000,2400,2600,540,2000,{mort:[220000,1400],school:[30000,300],car:[25000,500],cc:[10000,300],retail:[2000,100]}),
+ P("Civil engineer",10400,2500,2700,560,2500,{mort:[230000,1450],school:[60000,600],car:[20000,400],cc:[8000,240],retail:[1000,50]}),
+ P("Software engineer",13200,3500,3200,700,4000,{mort:[300000,1900],school:[50000,500],car:[30000,600],cc:[10000,300],retail:[2000,100]}),
+ P("Lawyer",15300,4300,3500,800,2000,{mort:[350000,2200],school:[130000,1300],car:[35000,700],cc:[12000,360],retail:[2000,100]}),
+ P("Airline pilot",18100,5100,4200,950,3000,{mort:[410000,2600],school:[90000,900],car:[40000,800],cc:[15000,450],retail:[2000,100]}),
+ P("Doctor",20300,5900,4500,1050,3500,{mort:[440000,2800],school:[190000,1900],car:[37000,750],cc:[14000,420],retail:[2000,100]}),
+];
+
+/* ================= boards: card spaces only ================= */
+const SPACE={
+  pay:{name:"Payday",icon:"pay",color:"var(--c-pay)"},
+  opp:{name:"Opportunity",icon:"opp",color:"var(--c-opp)"},
+  doodad:{name:"Doodad",icon:"doodad",color:"var(--c-doo)"},
+  market:{name:"Market",icon:"market",color:"var(--c-mkt)"},
+  charity:{name:"Charity",icon:"charity",color:"var(--c-char)"},
+  baby:{name:"Baby",icon:"baby",color:"var(--c-baby)"},
+  down:{name:"Downsized",icon:"down",color:"var(--c-down)"},
+  cfday:{name:"CASHFLOW Day",icon:"pay",color:"#c99a1c"},
+  ftbiz:{name:"Business",icon:"big",color:"var(--c-opp)"},
+  dream:{name:"Dream",icon:"dream",color:"#d64d9a"},
+  audit:{name:"Tax audit",icon:"audit",color:"#7b5cd6"},
+  lawsuit:{name:"Lawsuit",icon:"law",color:"#7b5cd6"},
+  divorce:{name:"Divorce",icon:"divorce",color:"#7b5cd6"},
+};
+const CELLS=["pay","opp","doodad","opp","market","opp","pay","opp","charity","opp","doodad","opp","pay","opp","market","opp","baby","opp","pay","opp","doodad","opp","down","market"];
+const FT=["cfday","ftbiz","dream","ftbiz","audit","ftbiz","cfday","ftbiz","dream","ftbiz","charity","ftbiz","cfday","ftbiz","dream","ftbiz","lawsuit","ftbiz","cfday","ftbiz","dream","divorce","ftbiz","dream"];
+const FT_BIZ=[
+ {name:"Recording studio",price:250e3,cf:9000,text:"Busy studio with long-term label contracts."},
+ {name:"Software company",price:400e3,cf:18000,text:"Profitable B2B software with 300 subscribers."},
+ {name:"Pizza chain",price:300e3,cf:12000,text:"Five shops with a shared kitchen and delivery fleet."},
+ {name:"Car dealership",price:600e3,cf:25000,text:"Franchise dealership with a service department."},
+ {name:"Fitness chain",price:350e3,cf:14000,text:"Three gyms, 2,400 members on contracts."},
+ {name:"Logistics fleet",price:500e3,cf:20000,text:"Twenty trucks on regional delivery contracts."},
+ {name:"Private clinic",price:750e3,cf:30000,text:"Outpatient clinic with eight doctors."},
+ {name:"Wind farm",price:900e3,cf:35000,text:"Twelve turbines selling power on a 20-year contract."},
+ {name:"Shopping center",price:1e6,cf:40000,text:"Fully leased center anchored by a supermarket."},
+ {name:"Office tower stake",price:1.2e6,cf:48000,text:"A 30% stake in a downtown office tower."},
+ {name:"Hotel chain",price:1.5e6,cf:60000,text:"Four business hotels in growing cities."},
+];
+const DREAMS=[
+ {name:"Sail around the world",price:600e3,text:"A year on a 50-foot yacht with your family."},
+ {name:"Mountain chalet",price:900e3,text:"A ski chalet with a view for every season."},
+ {name:"Private island villa",price:1.5e6,text:"A villa on your own tropical island."},
+ {name:"Art collection",price:400e3,text:"Original works by the artists you love."},
+ {name:"Build a school",price:750e3,text:"A free school for children in your hometown."},
+];
+const FT_INDEX=(()=>{let b=0,d=0;return FT.map(t=>t==="ftbiz"?b++:t==="dream"?d++:null);})();
+
+/* ================= cards =================
+   Every deal shows cost, mortgage, down payment and monthly cash flow (already after the mortgage payment). You pay only the down payment. */
+const DEAL=(kind,sub,units,title,text,cost,down,cf,rent,loanName)=>()=>({kind,sub,units,title,text,cost,down,mortgage:cost-down,cf,rent,loanName:loanName||"Mortgage"});
+const SMALL=[
+ DEAL("re","condo",1,"Condo 2BR/1BA","Bank-owned condo. HOA, tax and repairs are already in the numbers.",70000,7000,180,1100),
+ DEAL("re","condo",1,"Condo 2BR/1BA","Foreclosure. The bank wants it off its books.",50000,5000,240,950),
+ DEAL("re","house21",1,"House 2BR/1BA","Starter home near a bus line. Long-term tenant in place.",90000,9000,220,1250),
+ DEAL("re","house32",1,"House 3BR/2BA","Family home in a good school district.",120000,12000,260,1550),
+ DEAL("re","house32",1,"House 3BR/2BA","Estate sale. Needs paint, otherwise solid.",105000,10000,300,1500),
+ DEAL("re","house32",1,"Fixer-upper 3BR/2BA","Priced well below market. Repairs are already in the numbers.",80000,8000,380,1450),
+ DEAL("re","duplex",2,"Duplex","Two 2-bed units with separate meters.",160000,16000,480,2400),
+ DEAL("biz","smallbiz",0,"Vending machines","Three snack machines in office lobbies.",4000,4000,110),
+ DEAL("biz","smallbiz",0,"ATM machine","ATM in a convenience store. You split the fees.",8000,8000,200),
+ DEAL("biz","smallbiz",0,"Laundromat stake","A 15% stake in a neighborhood laundromat.",12000,12000,280),
+ DEAL("biz","smallbiz",0,"Used food truck","Leased to an experienced cook.",35000,7000,550,0,"Equipment loan"),
+ DEAL("biz","smallbiz",0,"Car-share vehicle","Used hybrid rented to rideshare drivers by the week.",18000,3000,250,0,"Car loan"),
+ DEAL("biz","smallbiz",0,"Niche website","Recipe blog earning from ads and affiliate links.",9000,9000,230),
+ DEAL("biz","smallbiz",0,"Billboard lease","Roadside billboard with a 3-year advertiser contract.",20000,5000,210,0,"Business loan"),
+ DEAL("biz","smallbiz",0,"Storage container","Rented to a builder as on-site storage.",7000,7000,140),
+ ()=>{const c=rand(9,15)*K;return {kind:"land",sub:"land",units:0,title:"Land, 10 acres",text:"Raw land outside the city. No income, but a highway is being discussed.",cost:c,down:c,mortgage:0,cf:0};},
+ ()=>({kind:"course",title:"Professional certification",text:"Six months of evening classes. Your employer raises your salary when you finish.",cost:4000}),
+ ()=>({kind:"cd",title:"Certificate of deposit",text:"A bank CD paying 5% a year, paid monthly. Buy in $1,000 steps.",rate:.05}),
+ ()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>stockCard("DIVY"),
+ ()=>cryptoCard(),()=>cryptoCard(),()=>goldCard(),
+];
+const BIG=[
+ DEAL("re","plex",4,"4-plex","Four rented apartments in a quiet suburb.",280000,28000,900,4400),
+ DEAL("re","plex",4,"4-plex","Older building, new roof, all units rented.",240000,24000,700,4000),
+ DEAL("re","plex",8,"8-plex","Eight units near a university. Steady demand.",520000,52000,1700,8800),
+ DEAL("re","plex",12,"12-unit apartment building","Professionally managed. Laundry room income included.",800000,90000,2400,13200),
+ DEAL("re","plex",24,"24-unit apartment complex","Garden-style complex with a pool and on-site manager.",1600000,200000,5200,27600),
+ DEAL("biz","bigbiz",0,"Car wash","Two-bay automatic car wash on a busy road.",250000,25000,1700,0,"SBA loan"),
+ DEAL("biz","bigbiz",0,"Daycare center","Licensed for 30 kids with a waiting list.",180000,18000,1200,0,"SBA loan"),
+ DEAL("biz","bigbiz",0,"Coffee franchise","Proven menu and a manager in place.",400000,40000,1100,0,"SBA loan"),
+ DEAL("biz","bigbiz",0,"Dental clinic","Three chairs, two dentists on contract.",650000,65000,1600,0,"SBA loan"),
+ DEAL("biz","bigbiz",0,"Gym franchise","800 members on monthly plans.",500000,50000,800,0,"SBA loan"),
+ DEAL("biz","bigbiz",0,"Tutoring center","Exam-prep center with 4 classrooms.",120000,12000,1000,0,"SBA loan"),
+ DEAL("biz","bigbiz",0,"Self-storage facility","120 units, 90% occupied, almost no staff.",1200000,300000,2100,0,"Commercial loan"),
+ DEAL("biz","bigbiz",0,"Boutique hotel","20 rooms in a tourist district.",2500000,625000,7000,0,"Commercial loan"),
+ DEAL("biz","bigbiz",0,"Solar farm","Sells power to the grid under a 15-year contract.",1400000,350000,3000,0,"Commercial loan"),
+];
+const E=(a,t,d,credit)=>()=>({a,t,d,credit});
+const PERM=(key,mult,add,t,d)=>()=>({perm:key,mult,add,t,d});
+const DOODADS=[
+ E(1100,"New smartphone","Your phone screen shattered beyond repair.",1),
+ E(300,"Friend's wedding","Gift, outfit and travel."),
+ E(900,"Car repair","New brakes and two tires."),
+ E(700,"Dentist","Two fillings and a cleaning, after insurance."),
+ E(1800,"Family vacation","A week at the beach with the family.",1),
+ E(800,"Washing machine","The old one finally died.",1),
+ E(500,"Unpaid loan","The money you lent a friend is not coming back."),
+ E(200,"Speeding ticket","A speed camera caught you."),
+ E(1200,"Big-screen TV","The game looks better on 75 inches.",1),
+ E(400,"Birthday party","Cake, games and a bouncy castle."),
+ E(1200,"Medical bill","Emergency room visit. This is what's left after insurance."),
+ E(1500,"New laptop","Work demands a faster machine.",1),
+ E(600,"Vet bill","Your dog ate something it shouldn't have."),
+ E(2000,"Home repair","A pipe burst and ruined the kitchen floor."),
+ PERM("other",1.1,0,"Lifestyle creep","You got used to nicer things. Other expenses rise 10% for good."),
+ PERM("other",1,60,"Gym membership","You signed a 2-year contract. +$60 every month."),
+];
+const M=o=>()=>({...o,...(o.lo?{price:rand(o.lo,o.hi)*K}:{})});
+const MARKET=[
+ M({kind:"buyer",type:"sub",sub:"condo",lo:80,hi:110,title:"Condo buyer",text:"A first-time buyer wants a 2BR/1BA condo and has a pre-approved mortgage."}),
+ M({kind:"buyer",type:"sub",sub:"house21",lo:100,hi:140,title:"Buyer for a 2BR/1BA house",text:"A young couple is looking for a starter home."}),
+ M({kind:"buyer",type:"sub",sub:"house32",lo:130,hi:190,title:"Buyer for a 3BR/2BA house",text:"A relocating family needs a house before school starts."}),
+ M({kind:"buyer",type:"sub",sub:"house32",lo:130,hi:190,title:"Buyer for a 3BR/2BA house",text:"An investor is buying houses in your area."}),
+ M({kind:"buyer",type:"sub",sub:"duplex",lo:180,hi:250,title:"Duplex buyer",text:"A buyer wants to live in one unit and rent the other."}),
+ M({kind:"buyer",type:"plex",lo:60,hi:95,title:"Apartment buyer",text:"A real estate fund is buying apartment buildings. The offer is per unit."}),
+ M({kind:"buyer",type:"smallbiz",title:"Small business buyer",text:"A retiree wants a running small business and will pay double its cost."}),
+ M({kind:"buyer",type:"bigbiz",title:"Private equity offer",text:"A fund offers 30% over cost for a large business."}),
+ M({kind:"buyer",type:"sub",sub:"land",lo:25,hi:45,title:"Developer wants land",text:"The highway was approved. A developer is buying land."}),
+ M({kind:"vacancy",title:"Tenant moves out",text:"One of your rentals sits empty for a month."}),
+ M({kind:"repair",title:"Roof repair",text:"A storm damaged the roof of one of your rentals."}),
+ M({kind:"bizshift",mult:.9,title:"Recession",text:"Customers are cutting back."}),
+ M({kind:"bizshift",mult:1.1,title:"Tourist boom",text:"Visitor numbers hit a record."}),
+ M({kind:"split"}),M({kind:"crash"}),M({kind:"goldup"}),M({kind:"cryptocrash"}),
+ ()=>stockCard(),()=>cryptoCard(),()=>goldCard(),
+];
+const DECKS={small:SMALL,big:BIG,market:MARKET,doodad:DOODADS};
+const DECK_INFO={small:{name:"Small Deals",color:"#1f8a5b",icon:"opp"},big:{name:"Big Deals",color:"#2a5bd7",icon:"big"},market:{name:"Market",color:"#c48a12",icon:"market"},doodad:{name:"Doodads",color:"#c4456a",icon:"doodad"}};
+const TICKERS={NOVA:{name:"Novatek Robotics",base:20},GRNR:{name:"GreenRiver Energy",base:35},BLUC:{name:"BlueCart Retail",base:8},MEDX:{name:"Medexa Labs",base:14},DIVY:{name:"Dividend Income Fund",base:50,div:.175},
+  BTC:{name:"Bitcoin",base:65000,crypto:1},ETH:{name:"Ethereum",base:3200,crypto:1}};
+function stockCard(tk){tk=tk||pick(["NOVA","GRNR","BLUC","MEDX"]);const r=tk==="DIVY"?.85+Math.random()*.3:.4+Math.random()*1.4;
+  return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(TICKERS[tk].base*r*2)/2),ratio:r};}
+function cryptoCard(){const tk=pick(["BTC","ETH"]),r=.3+Math.random()*1.9;return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(TICKERS[tk].base*r)),ratio:r};}
+function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*1600)/10)*10};}
+const BOT_NAMES=["Ava","Leo","Mia","Noah","Zoe","Kai"];
+
+/* photos: drop files into img/<key>.jpg and list the key here; cards fall back to a styled header without one */
+const IMAGES=new Set("atm bitcoin carshare carwash coffee complex condo container daycare dental duplex ethereum fixer foodtruck gold gym hotel house21 house32 land laundromat plex12 plex4 plex8 solar stocks storage tutoring vending website".split(" "));
+const IMG_BY_TITLE={"Condo 2BR/1BA":"condo","House 2BR/1BA":"house21","House 3BR/2BA":"house32","Fixer-upper 3BR/2BA":"fixer","Duplex":"duplex","Vending machines":"vending","Laundromat stake":"laundromat","ATM machine":"atm","Used food truck":"foodtruck","Car-share vehicle":"carshare","Niche website":"website","Billboard lease":"billboard","Storage container":"container","Land, 10 acres":"land","Professional certification":"course","Certificate of deposit":"bank",
+  "4-plex":"plex4","8-plex":"plex8","12-unit apartment building":"plex12","24-unit apartment complex":"complex","Car wash":"carwash","Daycare center":"daycare","Coffee franchise":"coffee","Dental clinic":"dental","Gym franchise":"gym","Tutoring center":"tutoring","Self-storage facility":"storage","Boutique hotel":"hotel","Solar farm":"solar",
+  "New smartphone":"phone","Friend's wedding":"wedding","Car repair":"carrepair","Dentist":"dentist","Family vacation":"vacation","Washing machine":"washer","Unpaid loan":"loan","Speeding ticket":"ticket","Big-screen TV":"tv","Birthday party":"party","Medical bill":"medical","New laptop":"laptop","Vet bill":"vet","Home repair":"homerepair","Lifestyle creep":"lifestyle","Gym membership":"gymmember"};
+const artOf=d=>d.img||IMG_BY_TITLE[d.title]||IMG_BY_TITLE[d.t]||(d.ticker==="BTC"?"bitcoin":d.ticker==="ETH"?"ethereum":d.ticker==="DIVY"?"fund":d.kind==="stock"?"stocks":d.kind==="gold"?"gold":d.kind==="cd"?"bank":"");
+const artStyle=k=>k&&IMAGES.has(k)?`--art:url(img/${k}.jpg)`:"";
+const KIND_ICON={re:"big",biz:"opp",land:"market",stock:"market",gold:"pay",cd:"bank",ftbiz:"big"};
+let nextArt="";
+
+/* ================= state ================= */
+let G=store.get(SAVE,null), route="home", confirmKey=null, pendingWins=[], spins=[0,0,0], botTimer=null, lastDeck=null, VIEW=0;
+let NET=null, ONLINE=null, seenLog=null, pushing=false, dirty=false, sheetOpen=false;
+const ROOMKEY="mf.room", NICK="mf.nick";
+const save=()=>ONLINE?pushState():store.set(SAVE,G);
+const cur=()=>G.players[G.turn];
+const isBot=()=>G&&cur().bot;
+const isActor=()=>!ONLINE||(cur().bot?ONLINE.isHost:cur().uid===NET.uid);
+const loanPay=p=>sum(p.loans.map(l=>l.payment));
+const totalExp=p=>p.tax+p.other+p.children*p.childCost+loanPay(p);
+const passive=p=>sum(p.assets.map(a=>a.income||0));
+const cashflow=p=>p.salary+passive(p)-totalExp(p);
+const assetValue=a=>a.kind==="stock"?a.qty*G.prices[a.ticker]:a.kind==="gold"?a.qty*G.gold:a.cost;
+const netWorth=p=>p.cash+sum(p.assets.map(assetValue))-sum(p.loans.map(l=>l.principal));
+const mortOf=(p,a)=>p.loans.find(l=>l.assetId===a.id);
+const dreamPrice=p=>DREAMS[p.dream].price*(1+(G.dreamBump?.[p.dream]||0));
+const monthLabel=p=>`Year ${Math.floor(p.months/12)+1} · Month ${p.months%12+1}`;
+const yrs=m=>`${Math.floor(m/12)}y ${m%12}m`;
+const fast=p=>p.track==="fast";
+
+function newPlayer(name,prof,i,bot,dream){
+  const p={id:i,name,bot:!!bot,prof:prof.name,salary:prof.salary,tax:prof.tax,other:prof.other,childCost:prof.child,children:0,
+    loans:[],assets:[],pos:0,track:"rat",months:0,charity:0,skip:0,bk:0,out:false,won:false,dream:dream??rand(0,DREAMS.length-1),hist:[]};
+  for(const [k,[bal,pay]] of Object.entries(prof.debts))p.loans.push({id:uid(),name:DEBT[k],principal:bal,payment:pay,kind:"debt",key:k});
+  p.cash=prof.savings+cashflow(p); // rulebook: savings plus one month of cash flow
+  return p;
+}
+function log(text,pid){G.log.unshift({t:text,p:pid??G.turn});G.log.length=Math.min(G.log.length,80);}
+function draw(deck){
+  if(!G.decks[deck].length)G.decks[deck]=shuffle([...DECKS[deck].keys()]);
+  lastDeck=deck;
+  return DECKS[deck][G.decks[deck].pop()]();
+}
+
+/* ================= bank (rulebook: $1,000 steps, 10% a month, interest only) ================= */
+function takeLoan(p,amt){
+  amt=up1k(amt);if(amt<=0)return 0;
+  let l=p.loans.find(x=>x.kind==="bank");
+  if(!l){l={id:uid(),name:"Bank loan",principal:0,payment:0,kind:"bank"};p.loans.push(l);}
+  l.principal+=amt;l.payment=Math.round(l.principal*BANK_RATE);p.cash+=amt;
+  log(`${p.name} borrowed ${fmt(amt)} from the bank`,p.id);return amt;
+}
+function repayBank(p,amt){
+  const l=p.loans.find(x=>x.kind==="bank");if(!l)return;
+  amt=Math.min(Math.floor(amt/1000)*1000,l.principal,Math.floor(p.cash/1000)*1000);if(amt<=0)return;
+  l.principal-=amt;p.cash-=amt;l.payment=Math.round(l.principal*BANK_RATE);
+  if(!l.principal)p.loans=p.loans.filter(x=>x!==l);
+  log(`${p.name} repaid ${fmt(amt)} of the bank loan`,p.id);
+}
+function payOffDebt(p,l){if(p.cash<l.principal)return;p.cash-=l.principal;p.loans=p.loans.filter(x=>x!==l);log(`${p.name} paid off ${l.name}`,p.id);}
+// a payment you must make: if cash is short, the bank lends the rest (rulebook)
+function mustPay(p,amt,why){
+  let borrowed=0;
+  if(p.cash<amt&&!fast(p)&&!p.bk)borrowed=takeLoan(p,amt-p.cash);
+  p.cash-=amt;
+  return borrowed?`<div class="why" style="color:var(--gold-hi)">Cash was short, so you borrowed ${fmt(borrowed)} from the bank (+${fmt(borrowed*BANK_RATE)}/mo).</div>`:"";
+}
+
+/* ================= paydays, bankruptcy, fast track ================= */
+function payday(p){
+  const cf=cashflow(p);
+  p.months++;
+  if(cf<0&&p.cash+cf<0){bankrupt(p);return;}
+  p.cash+=cf;
+  p.hist.push(Math.round(netWorth(p)));if(p.hist.length>120)p.hist.shift();
+  log(`${p.name} got paid: ${cf>=0?"+":""}${fmt(cf)}`,p.id);
+  sfx.coin();buzz([15,40,15]);coinBurst(cf>0?10:0);toast(`Payday · ${cf>=0?"+":""}${fmt(cf)}`);
+}
+function cashflowDay(p){
+  p.cash+=p.ftIncome;p.months++;
+  log(`${p.name}: CASHFLOW Day +${fmt(p.ftIncome)}`,p.id);
+  sfx.coin();buzz([15,40,15]);coinBurst(12);toast(`CASHFLOW Day · +${fmt(p.ftIncome)}`);
+}
+// rulebook: sell assets to the bank for half the down payment and pay debts until cash flow is positive,
+// miss 3 turns; if still negative, car/credit card/retail debts are halved; if still negative, you are out.
+function bankrupt(p){
+  log(`${p.name} went bankrupt`,p.id);sfx.bad();
+  const assets=[...p.assets].sort((a,b)=>(a.income||0)-(b.income||0));
+  for(const a of assets){
+    if(cashflow(p)>=0)break;
+    const l=mortOf(p,a);p.cash+=Math.round((a.down||a.cost||0)/2);p.assets=p.assets.filter(x=>x!==a);if(l)p.loans=p.loans.filter(x=>x!==l);
+    const b=p.loans.find(x=>x.kind==="bank");if(b)repayBank(p,p.cash);
+  }
+  if(cashflow(p)<0)p.loans.forEach(l=>{if(["car","cc","retail"].includes(l.key)){l.principal=Math.round(l.principal/2);l.payment=Math.round(l.payment/2);}});
+  if(cashflow(p)<0){p.out=true;log(`${p.name} is out of the game`,p.id);}
+  p.cash=Math.max(0,p.cash);p.skip=3;p.bk=3;
+  G.bkNote={pid:p.id,out:p.out};
+}
+function enterFastTrack(p){
+  p.track="fast";p.pos=0;p.ftIncome=Math.round(passive(p)*100);p.ftTarget=p.ftIncome+50000;p.cash=p.ftIncome;p.ftCharity=false;p.charity=0;
+  log(`${p.name} escaped the rat race! CASHFLOW Day income: ${fmt(p.ftIncome)}`,p.id);
+  const s=store.get(STATS,{played:0,wins:[],escapes:[]});(s.escapes=s.escapes||[]).push({name:p.name,prof:p.prof,bot:p.bot,months:p.months,date:new Date().toISOString().slice(0,10)});store.set(STATS,s);
+}
+function declareWinner(p,how){
+  if(G.winner!=null)return;
+  G.winner=p.id;p.won=true;log(`${p.name} won the game: ${how}`,p.id);
+  const s=store.get(STATS,{played:0,wins:[]});s.wins.push({name:p.name,prof:p.prof,bot:p.bot,months:p.months,how,date:new Date().toISOString().slice(0,10)});store.set(STATS,s);
+  pendingWins.push({id:p.id,how});
+}
+function coinBurst(n){
+  if(!n||matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const t=document.querySelector(".mini")||document.querySelector(".kpi")||document.body,r=t.getBoundingClientRect(),tx=r.left+r.width/2,ty=r.top+r.height/2;
+  for(let i=0;i<n;i++){const c=document.createElement("i");c.className="coin";const x=innerWidth/2+(Math.random()-.5)*160,y=innerHeight/2+(Math.random()-.5)*120;
+    c.style.left=x+"px";c.style.top=y+"px";c.style.setProperty("--dx",(tx-x)+"px");c.style.setProperty("--dy",(ty-y)+"px");c.style.animationDelay=(i*45)+"ms";
+    document.body.appendChild(c);setTimeout(()=>c.remove(),1000+i*45);}
+}
+function trackPrice(tk,price){(G.hist=G.hist||{})[tk]=[...(G.hist[tk]||[tk==="GOLD"?3600:TICKERS[tk].base]),price].slice(-30);}
+function sparkSVG(vals,h=44){
+  if(!vals||vals.length<2)return "";
+  const mn=Math.min(...vals),mx=Math.max(...vals),w=200,sp=mx-mn||1,pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-4-(v-mn)/sp*(h-8)).toFixed(1)}`);
+  const col=vals[vals.length-1]>=vals[0]?"var(--good)":"var(--bad)";
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,${h} ${pts.join(" ")} ${w},${h}" fill="${col}" opacity=".12"/><polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+/* ================= open offers: market buyers and price cards apply to every player until the next roll ================= */
+const offerActive=()=>G&&G.offer&&G.offer.r===G.rolls;
+function offerMatch(o,a){switch(o.type){case "sub":return a.sub===o.sub;case "plex":return a.sub==="plex";case "smallbiz":return a.sub==="smallbiz";case "bigbiz":return a.sub==="bigbiz";case "ticker":return a.kind==="stock"&&a.ticker===o.ticker;case "gold":return a.kind==="gold";}return false;}
+function offerPrice(o,a){switch(o.type){case "sub":return o.price;case "plex":return o.price*a.units;case "smallbiz":return a.cost*2;case "bigbiz":return rk(a.cost*1.3);case "ticker":case "gold":return Math.round(a.qty*o.price);}return 0;}
+function saleNet(p,a,price){const l=mortOf(p,a);return price-(l?l.principal:0);}
+function sellOffer(p,a){
+  const price=offerPrice(G.offer,a),l=mortOf(p,a);
+  p.cash+=price-(l?l.principal:0);p.assets=p.assets.filter(x=>x!==a);if(l)p.loans=p.loans.filter(x=>x!==l);
+  log(`${p.name} sold ${a.name} for ${fmt(price)}`,p.id);sfx.coin();
+}
+function openOffer(o){
+  G.offer={...o,id:uid(),r:G.rolls};
+  // bots decide right away; humans sell from their own ledger until the next roll
+  G.players.forEach(q=>{if(!q.bot||fast(q)||q.out)return;
+    q.assets.filter(a=>offerMatch(G.offer,a)).forEach(a=>{if(botSells(q,a,offerPrice(G.offer,a)))sellOffer(q,a);});});
+}
+function botSells(q,a,price){
+  if(a.kind==="stock"||a.kind==="gold")return price>=a.cost*1.3;
+  if(a.sub==="smallbiz")return true;
+  return price>=a.cost*1.2;
+}
+function offerRowsFor(p,allowSell){
+  if(!offerActive()||fast(p))return "";
+  const m=p.assets.filter(a=>offerMatch(G.offer,a));if(!m.length)return "";
+  return `<div class="offer"><b class="t">Open offer: ${esc(G.offer.title)}</b><div class="muted" style="font-size:12px;margin-bottom:6px">Any player can sell until the next roll.</div>${m.map(a=>{const pr=offerPrice(G.offer,a),net=saleNet(p,a,pr);
+    return `<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div>${esc(a.name)}</div><div class="meta">price ${fmt(pr)}${mortOf(p,a)?` − mortgage ${fmt(mortOf(p,a).principal)}`:""} · you get ${fmt(net)}</div></div><span></span>${allowSell?`<button class="btn sm" data-osell="${a.id}" data-pid="${p.id}">Sell</button>`:"<span></span>"}</div>`;}).join("")}</div>`;
+}
+
+/* ================= turn flow ================= */
+const FACES={1:[0,0],2:[0,-90],3:[-90,0],4:[90,0],5:[0,90],6:[0,180]};
+function roll(nd){
+  const p=cur();
+  if(G.phase!=="roll")return;
+  const d=Array.from({length:nd},()=>rand(1,6));
+  G.dice=d;G.rolls=(G.rolls||0)+1;G.rollId=(G.rollId||0)+1;
+  if(!fast(p)&&p.charity>0)p.charity--;
+  G.phase="moving";G.msg=`${esc(p.name)} rolled <b>${sum(d)}</b>`;
+  render();save();spinDice(d);keepAwake();buzz(25);
+  setTimeout(()=>step(p,sum(d)),prefs.fx?1000:250);
+}
+function spinDice(d){
+  sfx.roll();
+  document.querySelectorAll(".cube").forEach((c,i)=>{spins[i]=(spins[i]||0)+2;const [x,y]=FACES[d[i]||1];c.style.transform=`rotateX(${x+360*spins[i]}deg) rotateY(${y+360*spins[i]}deg)`;});
+}
+function step(p,n){
+  if(n===0){G.phase="event";render();save();handleCell(p);return;}
+  p.pos=(p.pos+1)%24;sfx.step();
+  if(fast(p)){if(FT[p.pos]==="cfday")cashflowDay(p);}
+  else if(CELLS[p.pos]==="pay")payday(p);
+  render();
+  if(G.bkNote&&G.bkNote.pid===p.id){G.bkNote=null;G.phase="event";render();save();return showBankrupt(p);}
+  setTimeout(()=>step(p,n-1),prefs.fast?90:230);
+}
+function done(){closeModal();G.phase="end";afterChange();}
+function afterChange(){
+  G.players.forEach(p=>{
+    if(!fast(p)&&!p.out&&passive(p)>totalExp(p)){enterFastTrack(p);pendingWins.push({id:p.id,how:"escape"});}
+    if(fast(p)&&p.ftIncome>=p.ftTarget)declareWinner(p,`CASHFLOW Day income reached ${fmt(p.ftIncome)}`);
+  });
+  render();save();
+  if(pendingWins.length&&$("#overlay").hidden)showWin(pendingWins.shift());
+}
+function nextTurn(){
+  if(G.players.every(p=>p.out))return;
+  let n=0;do{G.turn=(G.turn+1)%G.players.length;n++;}while(cur().out&&n<=G.players.length);
+  G.phase="roll";G.msg=null;
+  if(!ONLINE&&(!cur().bot||G.players[VIEW].bot))VIEW=G.turn;
+  render();save();
+}
+function skipTurn(){const q=cur();q.skip--;if(q.bk>0)q.bk--;log(`${q.name} missed a turn`);G.phase="end";nextTurn();}
+
+/* ================= bots ================= */
+const reserve=p=>Math.max(500,totalExp(p)*.5);
+function tickBot(){
+  if(botTimer||!G||route!=="play"||!cur().bot||!$("#overlay").hidden||(ONLINE&&!ONLINE.isHost))return;
+  if(G.phase!=="roll"&&G.phase!=="end")return;
+  botTimer=setTimeout(()=>{botTimer=null;if(route==="play"&&isBot()&&$("#overlay").hidden)botStep();},prefs.fast?350:900);
+}
+function botStep(){
+  const p=cur();
+  if(G.phase==="roll"){
+    if(p.skip>0)return skipTurn();
+    return roll(fast(p)?(p.ftCharity?3:2):(p.charity>0?2:1));
+  }
+  if(!fast(p)){
+    const b=p.loans.find(l=>l.kind==="bank");
+    if(b&&p.cash>1000+reserve(p))repayBank(p,p.cash-reserve(p));
+    [...p.loans].filter(l=>l.kind==="debt"||l.kind==="credit").sort((a,b)=>b.payment/b.principal-a.payment/a.principal)
+      .forEach(l=>{if(p.cash-l.principal>2*reserve(p))payOffDebt(p,l);});
+  }
+  afterChange();
+  if($("#overlay").hidden)nextTurn();
+}
+
+/* ================= spaces & cards ================= */
+const facts=rows=>`<div class="facts">${rows.map(([l,r,c,h])=>`<div class="row ${h||""}"><span class="l">${l}</span><span class="r ${c||""}">${r}</span></div>`).join("")}</div>`;
+function handleCell(p){
+  if(fast(p))return handleFast(p);
+  const t=CELLS[p.pos];
+  nextArt=({pay:"payday",opp:"opportunity",baby:"baby",charity:"charity",down:"downsized"})[t]||"";
+  switch(t){
+    case "pay": return modal({kicker:"Payday",icon:"pay",tone:"var(--c-pay)",title:"Your paycheck arrived",body:`<p>Salary plus passive income, minus all expenses.</p>${facts([["Cash flow this month",fmt(cashflow(p)),cashflow(p)>=0?"pos":"neg","hl"]])}`,actions:[{label:"Continue",primary:1,fn:done}],bot:0,silent:1});
+    case "opp": return modal({kicker:"Opportunity",icon:"opp",tone:"var(--c-opp)",title:"Small Deal or Big Deal?",
+      body:`<p>Small Deals: homes, small businesses, stocks, crypto and gold with smaller down payments. Big Deals: apartment buildings and companies with down payments of $12,000 and up.</p>${facts([["Your cash",fmt(p.cash)],["Small Deals in deck",G.decks.small.length],["Big Deals in deck",G.decks.big.length]])}`,
+      actions:[{label:"Small Deal",fn:()=>present(p,draw("small"))},{label:"Big Deal",primary:1,fn:()=>present(p,draw("big"))}],bot:()=>p.cash>=20000?1:0,silent:1});
+    case "doodad": return doodadCard(p,draw("doodad"));
+    case "market": return marketCard(p,draw("market"));
+    case "baby": return babyCell(p);
+    case "charity": return charityCell(p);
+    case "down": return downCell(p);
+  }
+}
+function present(p,d){
+  nextArt=artOf(d);
+  if(d.kind==="stock")return stockModal(p,d);
+  if(d.kind==="gold")return goldModal(p,d);
+  if(d.kind==="course")return courseModal(p,d);
+  if(d.kind==="cd")return cdModal(p,d);
+  offerDeal(p,d);
+}
+function offerDeal(p,d){
+  const deck=d.sub==="plex"||d.sub==="bigbiz"?"big":"small",dk=DECK_INFO[deck];
+  const need=Math.max(0,d.down-p.cash),borrow=up1k(need),interest=borrow*BANK_RATE,roi=d.down?Math.round(d.cf*12/d.down*100):0;
+  const rows=[["Cost",fmt(d.cost)]];
+  if(d.mortgage)rows.push([d.loanName,fmt(d.mortgage)]);
+  rows.push(["Down payment",fmt(d.down)],["Cash flow",(d.cf>=0?"+":"")+fmt(d.cf)+"/mo",d.cf>0?"pos":"","hl"]);
+  if(d.down&&d.cf)rows.push(["Return on investment",`${roi}% a year`]);
+  rows.push(["Your cash",fmt(p.cash)]);
+  const rentLine=d.rent?`<p style="font-size:12.5px">Rent ${fmt(d.rent)}/mo. Mortgage payment, tax, insurance and repairs: ${fmt(d.rent-d.cf)}/mo.</p>`:"";
+  const blocked=need>0&&p.bk;
+  const acts=[{label:need?`Borrow ${fmt(borrow)} and buy`:"Buy",primary:1,disabled:blocked,fn:()=>{takeLoan(p,borrow);buyDeal(p,d);}},{label:"Pass",fn:done}];
+  modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:esc(d.title),
+    body:`<p>${d.text}</p>${facts(rows)}${rentLine}${need?`<div class="why" style="color:var(--gold-hi)">You need ${fmt(need)} more. The bank lends in $1,000 steps at 10% a month: +${fmt(interest)}/mo.</div>`:""}${blocked?`<div class="why">After bankruptcy the bank won't lend for a few turns.</div>`:""}`,actions:acts,
+    bot:()=>{
+      if(d.kind==="land")return p.cash-d.cost>3*reserve(p)?0:1;
+      if(d.cf<=0)return 1;
+      if(!need&&p.cash-d.down>=reserve(p))return 0;
+      return d.cf-interest-(need?reserve(p)*BANK_RATE:0)>0&&!blocked?0:1;}});
+}
+function buyDeal(p,d){
+  const a={id:uid(),kind:d.kind,sub:d.sub,units:d.units||0,name:d.title,cost:d.cost,down:d.down,income:d.cf||0,img:artOf(d)};
+  p.assets.push(a);p.cash-=d.down;
+  if(d.mortgage)p.loans.push({id:uid(),name:`${d.loanName}: ${d.title}`,principal:d.mortgage,payment:0,kind:"mort",assetId:a.id});
+  log(`${p.name} bought ${a.name} (${fmt(d.down)} down)`);sfx.coin();done();
+}
+function courseModal(p,d){
+  const dk=DECK_INFO.small,rise=Math.round(p.salary*.1),taxUp=Math.round(rise*.25);
+  modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:d.title,body:`<p>${d.text}</p>${facts([["Cost",fmt(-d.cost),"neg"],["Salary",`+${fmt(rise)}/mo`,"pos"],["Extra tax",`+${fmt(taxUp)}/mo`,"neg"],["Cash flow",`+${fmt(rise-taxUp)}/mo`,"pos","hl"]])}`,
+    actions:[{label:"Enroll",primary:1,disabled:p.cash<d.cost,fn:()=>{p.cash-=d.cost;p.salary+=rise;p.tax+=taxUp;log(`${p.name} got certified: salary +${fmt(rise)}`);done();}},{label:"Pass",fn:done}],bot:()=>p.cash>d.cost+reserve(p)?0:1});
+}
+function cdModal(p,d){
+  const dk=DECK_INFO.small,held=p.assets.find(a=>a.kind==="cd");
+  modal({kicker:dk.name,icon:"bank",tone:dk.color,title:d.title,body:`<p>${d.text}</p>${facts([["Rate","5% a year"],["You hold",held?fmt(held.cost):"none"],["Your cash",fmt(p.cash)]])}
+    <label class="sh" for="qty">Amount ($1,000 steps)</label><input class="field num" id="qty" type="number" min="1000" step="1000" value="${Math.max(1000,Math.floor(p.cash/2/1000)*1000)}"><div class="note" id="qtyCost"></div>`,
+    actions:[{label:"Buy CD",primary:1,keep:1,fn:()=>{const v=Math.floor(+$("#qty").value/1000)*1000;if(!(v>0))return toast("Enter an amount");if(v>p.cash)return toast("Not enough cash");
+      let a=p.assets.find(x=>x.kind==="cd");if(!a){a={id:uid(),kind:"cd",name:"Certificate of deposit",cost:0,income:0,img:"bank"};p.assets.push(a);}
+      a.cost+=v;a.income=Math.round(a.cost*d.rate/12);p.cash-=v;log(`${p.name} bought a ${fmt(v)} CD`);sfx.coin();done();}},{label:"Pass",fn:done}],
+    bot:()=>{const v=Math.floor((p.cash-4*reserve(p))/1000)*1000;if(v>=1000){$("#qty").value=v;return 0;}return 1;}});
+  const upd=()=>{const v=Math.floor((+$("#qty").value||0)/1000)*1000;$("#qtyCost").textContent=`Interest: +${fmt(v*d.rate/12)}/mo`;};
+  $("#qty").addEventListener("input",upd);upd();
+}
+function tradeModal(p,{title,body,price,unit,held,qtyQ,def,step,onBuy,botBuy,share,dec}){
+  const dk=DECK_INFO.small,rq=v=>dec?Math.floor(v*100)/100:Math.floor(v);
+  modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title,body:`${body}${facts([["Price today",fmt(price)+" "+unit],["You own",held?`${held.qty.toLocaleString("en-US")} (avg ${fmt(held.cost/held.qty)})`:"none"],["Your cash",fmt(p.cash)]])}
+    <label class="sh" for="qty">${qtyQ}</label><input class="field num" id="qty" type="number" min="${dec?.01:1}" step="${step}" value="${def}"><div class="note" id="qtyCost"></div>
+    <p class="note">Everyone holding it can sell at this price until the next roll.</p>`,
+    actions:[{label:"Buy",primary:1,keep:1,fn:()=>{const q=rq(+$("#qty").value);if(!(q>0))return toast("Enter a quantity");const cost=Math.round(q*price);if(cost>p.cash)return toast("Not enough cash. Take a bank loan first.");onBuy(q,cost);sfx.coin();done();}},
+      ...(held?[{label:`Sell all (${fmt(held.qty*price)})`,fn:()=>{sellOffer(p,held);done();}}]:[]),{label:"Pass",fn:done}],
+    bot:()=>{
+      if(held&&price*held.qty>=held.cost*1.3)return 1;
+      const q=rq(p.cash*share/price);
+      if(botBuy&&p.cash>3*reserve(p)&&q>0){$("#qty").value=q;return 0;}
+      return held?2:1;}});
+  const upd=()=>{$("#qtyCost").textContent=`Total: ${fmt((+$("#qty").value||0)*price)}`;};
+  $("#qty").addEventListener("input",upd);upd();
+}
+function stockModal(p,d){
+  G.prices[d.ticker]=d.price;trackPrice(d.ticker,d.price);nextArt=artOf(d);
+  openOffer({type:"ticker",ticker:d.ticker,price:d.price,title:`${TICKERS[d.ticker].name} at ${fmt(d.price)}`});
+  const tk=TICKERS[d.ticker],held=p.assets.find(a=>a.kind==="stock"&&a.ticker===d.ticker);
+  const note=tk.crypto?`${d.ratio<.8?"Crypto sold off hard this week.":d.ratio>1.5?"Crypto is in a hype rally.":"Prices are calm for once."} It has traded around ${fmt(tk.base)}. Swings of 50% happen. No income.`
+    :tk.div?`Pays ${fmt(tk.div*100)} per 100 shares every month, about 4% a year.`:`${d.ratio<.8?"Shares dropped after a weak earnings report.":d.ratio>1.3?"Strong earnings pushed the stock up.":"The stock trades near its usual range."} Trading range: ${fmt(tk.base*.4)}–${fmt(tk.base*1.8)}. No dividend.`;
+  tradeModal(p,{title:`${tk.name} · ${d.ticker}`,price:d.price,unit:tk.crypto?"/ coin":"/ share",held,qtyQ:tk.crypto?"Coins to buy (decimals allowed)":"Shares to buy",def:tk.crypto?.1:100,step:tk.crypto?.01:10,dec:!!tk.crypto,
+    body:`<p>${note}</p><div class="sh">Recent prices</div>${sparkSVG(G.hist[d.ticker])}`,
+    botBuy:tk.div?true:d.ratio<(tk.crypto?.6:.7),share:tk.div?.25:tk.crypto?.08:.3,
+    onBuy:(q,cost)=>{if(held){held.qty=Math.round((held.qty+q)*100)/100;held.cost+=cost;held.income=tk.div?Math.round(held.qty*tk.div):0;}else p.assets.push({id:uid(),kind:"stock",ticker:d.ticker,name:`${tk.name} (${d.ticker})`,qty:q,cost,income:tk.div?Math.round(q*tk.div):0,img:artOf(d)});p.cash-=cost;log(`${p.name} bought ${q} ${d.ticker} (${fmt(cost)})`);}});
+}
+function goldModal(p,d){
+  G.gold=d.price;nextArt="gold";trackPrice("GOLD",d.price);
+  openOffer({type:"gold",price:d.price,title:`Gold at ${fmt(d.price)}/oz`});
+  const held=p.assets.find(a=>a.kind==="gold");
+  tradeModal(p,{title:"Gold coins · 1 oz",price:d.price,unit:"/ oz",held,qtyQ:"Ounces to buy",def:2,step:1,body:`<p>Gold pays nothing, but it tends to hold value when currencies weaken.</p><div class="sh">Recent prices</div>${sparkSVG(G.hist.GOLD)}`,
+    botBuy:d.price<3200,share:.1,
+    onBuy:(q,cost)=>{if(held){held.qty+=q;held.cost+=cost;}else p.assets.push({id:uid(),kind:"gold",name:"Gold coins",qty:q,cost,income:0,img:"gold"});p.cash-=cost;log(`${p.name} bought ${q} oz of gold (${fmt(cost)})`);}});
+}
+function marketCard(p,d){
+  const mk=DECK_INFO.market;
+  nextArt=({vacancy:"vacancy",repair:"roof",bizshift:d.mult<1?"recession":"tourism",split:"stocks",crash:"crash",goldup:"gold",cryptocrash:"bitcoin",buyer:"handshake"})[d.kind]||"";
+  const show=(title,text,tone)=>modal({kicker:mk.name,icon:mk.icon,tone:tone||mk.color,title,body:`<p>${text}</p>`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});
+  const own=f=>p.assets.filter(f);
+  switch(d.kind){
+    case "stock": return stockModal(p,d);
+    case "gold": return goldModal(p,d);
+    case "buyer":{
+      const offer={type:d.type,sub:d.sub,price:d.price,title:d.title};
+      openOffer(offer);
+      const mine=p.assets.filter(a=>offerMatch(G.offer,a));
+      const priceText=d.type==="plex"?` Offer: ${fmt(d.price)} per unit.`:d.price?` Offer: ${fmt(d.price)}.`:"";
+      if(!mine.length)return show(d.title,`${d.text}${priceText} You don't own anything that fits. Other players can sell until the next roll.`);
+      return modal({kicker:`${mk.name} · buyer`,icon:mk.icon,tone:mk.color,title:d.title,body:`<p>${d.text}${priceText}</p>${mine.map(a=>{const pr=offerPrice(G.offer,a),l=mortOf(p,a);
+          return `<div class="sh">${esc(a.name)} · cost ${fmt(a.cost)}</div>${facts([["Sale price",fmt(pr)],...(l?[["Mortgage paid off",fmt(-l.principal),"neg"]]:[]),["You receive",fmt(pr-(l?l.principal:0)),"pos","hl"],["Cash flow lost",a.income?fmt(-a.income)+"/mo":"none"]])}`;}).join("")}<p class="note">Other players can also sell until the next roll.</p>`,
+        actions:[...mine.map(a=>({label:`Sell ${a.name}`,fn:()=>{sellOffer(p,a);done();}})),{label:"Keep",primary:1,fn:done}],
+        bot:()=>{const i=mine.findIndex(a=>botSells(p,a,offerPrice(G.offer,a)));return i<0?mine.length:i;}});
+    }
+    case "vacancy":{const rs=own(a=>a.kind==="re"&&a.income>0);if(!rs.length)return show(d.title,`${d.text} You don't own rentals, so nothing happens.`);
+      const a=pick(rs),note=mustPay(p,a.income);log(`${p.name}: ${a.name} sat empty (−${fmt(a.income)})`);sfx.bad();return modal({kicker:mk.name,icon:mk.icon,tone:"var(--bad)",title:d.title,body:`<p>${esc(a.name)} sat empty for a month. You lose its cash flow: −${fmt(a.income)}.</p>${note}`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});}
+    case "repair":{const rs=own(a=>a.kind==="re");if(!rs.length)return show(d.title,`${d.text} You don't own rentals, so nothing happens.`);
+      const a=pick(rs),c=1000+a.units*300,note=mustPay(p,c);log(`${p.name}: roof repair on ${a.name} −${fmt(c)}`);sfx.bad();return modal({kicker:mk.name,icon:mk.icon,tone:"var(--bad)",title:d.title,body:`<p>${esc(a.name)} needs roof work: −${fmt(c)}.</p>${note}`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});}
+    case "bizshift":{const bs=own(a=>a.kind==="biz"&&a.income>0);if(!bs.length)return show(d.title,`${d.text} You don't own a business, so nothing changes.`);
+      const a=pick(bs);a.income=Math.round(a.income*d.mult);log(`${p.name}: ${a.name} cash flow ${d.mult>1?"+":"−"}10%`);return show(d.title,`${d.text} ${esc(a.name)} now brings ${d.mult>1?"10% more":"10% less"} cash flow, for good.`,d.mult>1?"var(--good)":"var(--bad)");}
+    case "split":{const tk=pick(["NOVA","GRNR","MEDX"]);G.prices[tk]/=2;trackPrice(tk,G.prices[tk]);G.players.forEach(q=>q.assets.forEach(a=>{if(a.ticker===tk)a.qty*=2;}));log(`${tk} split 2-for-1.`);
+      return show(`${TICKERS[tk].name} splits 2-for-1`,`Every share becomes two at half the price, for every player. Holdings keep the same value.`);}
+    case "crash": G.prices.BLUC=1;trackPrice("BLUC",1);log("BlueCart Retail collapsed to $1.");return show("BlueCart Retail scandal","Accounting fraud was uncovered. BLUC shares crash to $1 for every player.","var(--bad)");
+    case "goldup": G.gold=Math.round(G.gold*1.15);trackPrice("GOLD",G.gold);log("Gold rose 15%.");return show("Currency slump","The dollar weakened and gold jumped 15%.");
+    case "cryptocrash": ["BTC","ETH"].forEach(t=>{G.prices[t]=Math.round(G.prices[t]*.55);trackPrice(t,G.prices[t]);});log("Crypto crashed 45%.");
+      return show("Crypto crash","A major exchange collapsed. Bitcoin and Ethereum fall 45% overnight.","var(--bad)");
+  }
+}
+function doodadCard(p,e){
+  const dk=DECK_INFO.doodad;nextArt=artOf(e);
+  if(e.perm){const before=p[e.perm];p[e.perm]=Math.round(p[e.perm]*e.mult+e.add);log(`${p.name}: ${e.t}`);sfx.bad();
+    return modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:e.t,body:`<p>${e.d}</p>${facts([["Other expenses before",fmt(before)+"/mo"],["After",fmt(p[e.perm])+"/mo","neg","hl"]])}`,actions:[{label:"Got it",primary:1,fn:done}],bot:0});}
+  const amt=e.a,pay=Math.max(30,Math.round(amt*.03));
+  const acts=[{label:`Pay ${fmt(amt)}`,primary:1,fn:()=>{const note=mustPay(p,amt);log(`${p.name}: ${e.t} −${fmt(amt)}`);sfx.bad();if(note){closeModal();return modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:e.t,body:note,actions:[{label:"Continue",primary:1,fn:done}],bot:0,silent:1});}done();}}];
+  if(e.credit)acts.push({label:`Credit card (+${fmt(pay)}/mo)`,fn:()=>{p.loans.push({id:uid(),name:`Credit card: ${e.t}`,principal:amt,payment:pay,kind:"credit"});log(`${p.name} put ${e.t} on a credit card`);done();}});
+  modal({kicker:dk.name,icon:dk.icon,tone:dk.color,title:e.t,body:`<p>${e.d}</p>${facts([["Cost",fmt(-amt),"neg","hl"],["Your cash",fmt(p.cash)]])}${e.credit?`<p class="note">Or put it on a credit card: a ${fmt(amt)} debt with a ${fmt(pay)} monthly payment until you pay it off.</p>`:""}${p.cash<amt?`<div class="why">You don't have enough cash. Paying now borrows the rest from the bank.</div>`:""}`,actions:acts,
+    bot:()=>p.cash>=amt||!e.credit?0:1});
+}
+function babyCell(p){
+  const t=SPACE.baby;
+  if(p.children>=MAX_KIDS)return modal({kicker:t.name,icon:t.icon,tone:t.color,title:"Family day",body:"<p>You already have three children. A day at the park, no new costs.</p>",actions:[{label:"Continue",primary:1,fn:done}],bot:0});
+  p.children++;log(`${p.name} welcomed child #${p.children}`);
+  modal({kicker:t.name,icon:t.icon,tone:t.color,title:"Congratulations, a baby!",body:`<p>Add the cost of a child to your expenses.</p>${facts([["Per child",`+${fmt(p.childCost)}/mo`,"neg"],["Children",`${p.children} of ${MAX_KIDS}`],["New cash flow",fmt(cashflow(p))+"/mo",cashflow(p)>=0?"pos":"neg","hl"]])}`,actions:[{label:"Thanks!",primary:1,fn:done}],bot:0});
+}
+function charityCell(p){
+  const t=SPACE.charity,amt=r10((p.salary+passive(p))*.1);
+  modal({kicker:t.name,icon:t.icon,tone:t.color,title:"Give 10% to charity",body:`<p>Donate 10% of your total income and for your next 3 turns you may roll 1 or 2 dice. Charity is optional.</p>${facts([["Donation",fmt(amt)],["Your cash",fmt(p.cash)]])}`,
+    actions:[{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.charity=3;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],bot:()=>p.cash>amt+2*reserve(p)?0:1});
+}
+function downCell(p){
+  const t=SPACE.down,lose=totalExp(p),note=mustPay(p,lose);p.skip=2;log(`${p.name} was downsized: −${fmt(lose)}, misses 2 turns`);sfx.bad();
+  modal({kicker:t.name,icon:t.icon,tone:t.color,title:"You were downsized",body:`<p>You lost your job. Pay one month of total expenses and miss 2 turns.</p>${facts([["Total expenses",fmt(-lose),"neg","hl"]])}${note}`,actions:[{label:"Got it",primary:1,fn:done}],bot:0});
+}
+function showBankrupt(p){
+  modal({kicker:"Bankruptcy",icon:"down",tone:"var(--bad)",title:p.out?`${esc(p.name)} is out of the game`:`${esc(p.name)} went bankrupt`,silent:1,
+    body:p.out?`<p>Even after selling every asset and halving car, credit card and retail debt, cash flow is still negative.</p>`
+      :`<p>Payday came with negative cash flow and not enough cash. Assets were sold to the bank for half their down payment, debts were paid, and ${esc(p.name)} misses 3 turns.</p>${facts([["Cash flow now",fmt(cashflow(p))+"/mo",cashflow(p)>=0?"pos":"neg","hl"]])}`,
+    actions:[{label:"Continue",primary:1,fn:()=>{if(p.out||isBot()){done();}else done();}}],bot:0});
+}
+
+/* ================= fast track ================= */
+function handleFast(p){
+  const t=FT[p.pos],s=SPACE[t],idx=FT_INDEX[p.pos];
+  const box=(title,body,tone,acts,bot)=>modal({kicker:`Fast Track · ${s.name}`,icon:s.icon,tone:tone||s.color,title,body,actions:acts||[{label:"Continue",primary:1,fn:done}],bot:bot??0});
+  switch(t){
+    case "cfday": return box("CASHFLOW Day",`<p>Your businesses paid out.</p>${facts([["CASHFLOW Day income",`+${fmt(p.ftIncome)}`,"pos","hl"]])}`);
+    case "ftbiz":{
+      const b=FT_BIZ[idx],owner=G.ftOwn?.[p.pos];
+      if(owner!=null)return box(b.name,`<p>${esc(G.players[owner].name)} already owns this business. It can be bought only once.</p>`);
+      return box(b.name,`<p>${b.text}</p>${facts([["Price",fmt(b.price)],["Adds to CASHFLOW Day",`+${fmt(b.cf)}`,"pos","hl"],["Your cash",fmt(p.cash)],["Goal",`${fmt(p.ftIncome)} → ${fmt(p.ftTarget)}`]])}${p.cash<b.price?`<div class="why">Not enough cash. There are no bank loans on the Fast Track.</div>`:""}`,"var(--c-opp)",
+        [{label:"Buy",primary:1,disabled:p.cash<b.price,fn:()=>{p.cash-=b.price;p.ftIncome+=b.cf;(G.ftOwn=G.ftOwn||{})[p.pos]=p.id;(p.ftBiz=p.ftBiz||[]).push(b.name);log(`${p.name} bought ${b.name} (+${fmt(b.cf)} CASHFLOW Day)`);sfx.coin();done();}},{label:"Pass",fn:done}],
+        ()=>p.cash>=b.price?0:1);
+    }
+    case "dream":{
+      const dr=DREAMS[idx];
+      if(p.dream===idx){const price=dreamPrice(p);
+        return box(dr.name,`<p>This is your Dream. ${dr.text}</p>${facts([["Price",fmt(price)],["Your cash",fmt(p.cash)]])}${p.cash<price?`<div class="why">Not enough cash yet. Keep collecting CASHFLOW Days.</div>`:""}`,"#d64d9a",
+          [{label:"Buy my Dream",primary:1,disabled:p.cash<price,fn:()=>{p.cash-=price;log(`${p.name} bought their Dream: ${dr.name}`);declareWinner(p,`bought their Dream, ${dr.name}`);done();}},{label:"Not yet",fn:done}],()=>p.cash>=price?0:1);}
+      const owners=G.players.filter(q=>q.dream===idx&&q!==p);
+      if(owners.length){(G.dreamBump=G.dreamBump||{})[idx]=(G.dreamBump[idx]||0)+1;log(`${p.name} landed on ${dr.name}: its price rose 100% for ${owners.map(q=>q.name).join(", ")}`);}
+      return box(dr.name,`<p>${owners.length?`This is ${owners.map(q=>esc(q.name)).join(" and ")}'s Dream. Landing here raises its price for them by 100% of the original: now ${fmt(DREAMS[idx].price*(1+(G.dreamBump[idx]||0)))}.`:"Nobody chose this Dream."}</p>`);
+    }
+    case "charity":{
+      const amt=r10(p.ftIncome*.1);
+      if(p.ftCharity)return box("Charity","<p>You already roll 1, 2 or 3 dice for the rest of the game.</p>");
+      return box("Charity",`<p>Donate ${fmt(amt)} and for the rest of the game you may roll 1, 2 or 3 dice.</p>${facts([["Donation",fmt(amt)],["Your cash",fmt(p.cash)]])}`,null,
+        [{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.ftCharity=true;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],()=>p.cash>amt*4?0:1);
+    }
+    case "audit":{const l=Math.round(p.cash/2);p.cash-=l;log(`${p.name}: tax audit −${fmt(l)}`);sfx.bad();return box("Tax audit",`<p>The audit found problems. You pay half your cash.</p>${facts([["Paid",fmt(-l),"neg","hl"]])}`);}
+    case "lawsuit":{const l=Math.round(p.cash/2);p.cash-=l;log(`${p.name}: lawsuit −${fmt(l)}`);sfx.bad();return box("Lawsuit",`<p>You were sued and settled. You lose half your cash.</p>${facts([["Paid",fmt(-l),"neg","hl"]])}`);}
+    case "divorce":{const l=p.cash;p.cash=0;log(`${p.name}: divorce −${fmt(l)}`);sfx.bad();return box("Divorce",`<p>The divorce costs you all your cash.</p>${facts([["Lost",fmt(-l),"neg","hl"]])}`);}
+  }
+}
+
+/* ================= bank modal ================= */
+const canAct=()=>G&&(G.phase==="roll"||G.phase==="end");
+function bankModal(){
+  const p=cur(),b=p.loans.find(l=>l.kind==="bank"),debts=p.loans.filter(l=>l.kind==="debt"||l.kind==="credit");
+  const amts=[1,2,5,10,25,50];
+  modal({kicker:"Bank",icon:"bank",tone:"var(--navy)",title:"Bank",silent:1,body:`
+    ${facts([["Your cash",fmt(p.cash)],["Bank loan",b?`${fmt(b.principal)} (${fmt(b.payment)}/mo)`:"none"],["Cash flow",fmt(cashflow(p))+"/mo",cashflow(p)>=0?"pos":"neg"]])}
+    <div class="sh">Borrow · $1,000 steps · 10% a month, interest only</div>
+    ${p.bk?`<p class="why">After bankruptcy the bank won't lend for ${p.bk} more turn(s).</p>`:`<div class="amts">${amts.map(a=>`<button class="btn" data-loan="${a}">$${a}k<small>+${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}</div>`}
+    ${b?`<div class="sh">Repay bank loan · $1,000 steps</div><div class="amts">${[1,5,10].map(a=>`<button class="btn" data-repay="${a}" ${p.cash<a*K||b.principal<a*K?"disabled":""}>$${a}k<small>−${fmt(a*K*BANK_RATE)}/mo</small></button>`).join("")}<button class="btn" data-repay="all" ${p.cash<b.principal?"disabled":""}>All<small>${fmt(b.principal)}</small></button></div>`:""}
+    <div class="sh">Pay off debts · in full only</div>
+    ${debts.length?debts.map(l=>`<div class="asset"><div class="thumb">${svg("bank")}</div><div style="min-width:0"><div>${esc(l.name)}</div><div class="meta">balance ${fmt(l.principal)} · ${fmt(l.payment)}/mo</div></div><span></span><button class="btn sm" data-payoff="${l.id}" ${p.cash<l.principal?"disabled":""}>Pay ${fmt(l.principal)}</button></div>`).join(""):`<div class="empty">No debts.</div>`}
+    <p class="note">Taxes, other expenses and child costs can't be reduced.</p>`,
+    actions:[{label:"Close",primary:1,fn:()=>afterChange()}],
+    onBody:e=>{const btn=e.target.closest("button");if(!btn)return;
+      if(btn.dataset.loan){takeLoan(p,+btn.dataset.loan*K);sfx.coin();}
+      if(btn.dataset.repay){repayBank(p,btn.dataset.repay==="all"?b.principal:+btn.dataset.repay*K);}
+      if(btn.dataset.payoff){const l=p.loans.find(x=>x.id===btn.dataset.payoff);if(l)payOffDebt(p,l);}
+      save();bankModal();}});
+}
+function showWin(w){
+  const p=G.players[w.id];sfx.win();
+  if(w.how==="escape")return modal({kicker:"Out of the rat race",icon:"dream",tone:"#7b5cd6",title:`${esc(p.name)} escaped the rat race!`,silent:1,
+    body:`<p>Passive income is now bigger than total expenses. ${esc(p.name)} moves to the Fast Track.</p>${facts([["CASHFLOW Day income",fmt(p.ftIncome),"pos"],["Starting cash",fmt(p.cash)],["To win","Buy your Dream, or reach "+fmt(p.ftTarget)+" CASHFLOW Day income","","hl"],["Dream",`${DREAMS[p.dream].name} · ${fmt(dreamPrice(p))}`]])}`,
+    actions:[{label:"Continue",primary:1,fn:()=>{if(pendingWins.length)showWin(pendingWins.shift());else tickBot();}}],bot:0});
+  modal({kicker:"Winner",icon:"dream",tone:"var(--gold-lo)",title:`${esc(p.name)} wins!`,silent:1,body:`<p>${esc(p.name)} ${esc(w.how)}.</p>${facts([["Net worth",fmt(netWorth(p))],["Time",yrs(p.months),"","hl"]])}<p>You can keep playing.</p>`,
+    actions:[{label:"Continue",primary:1,fn:()=>{if(pendingWins.length)showWin(pendingWins.shift());else tickBot();}}],bot:0});
+}
+
+/* ================= modal / toast ================= */
+function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
+  const m=$("#modal"),botTurn=isBot()&&bot!=null;
+  m.style.setProperty("--tone",tone||"var(--navy)");
+  const art=artStyle(nextArt);nextArt="";
+  m.innerHTML=`<div class="mtop${art?" photo":""}" style="${art}"><div class="kick">${icon?svg(icon):""}${kicker||""}</div><h3 id="mt">${title}</h3></div><div class="mb">${botTurn?`<div class="botnote">${esc(cur().name)} (bot) is deciding…</div>`:""}<div id="mbody">${body}</div></div><div class="acts"></div>`;
+  m.setAttribute("aria-labelledby","mt");
+  const box=m.querySelector(".acts");
+  actions.forEach(a=>{const b=document.createElement("button");b.className="btn"+(a.primary?" primary":"");b.textContent=a.label;b.disabled=!!a.disabled||botTurn;
+    b.onclick=()=>{sfx.click();if(!a.keep)closeModal();a.fn&&a.fn();};box.appendChild(b);});
+  m.querySelector("#mbody").onclick=onBody||null;
+  $("#overlay").hidden=false;
+  if(!silent)sfx.card();
+  if(lastDeck){document.querySelector(`.deck[data-deck="${lastDeck}"]`)?.classList.add("drawn");lastDeck=null;}
+  if(botTurn){
+    setTimeout(()=>{let i=typeof bot==="function"?bot():bot;const btns=[...box.children];
+      if(!actions[i]||actions[i].disabled)i=actions.length-1;
+      btns.forEach(b=>b.disabled=false);btns[i].style.outline="3px solid var(--gold)";
+      setTimeout(()=>btns[i].click(),prefs.fast?250:650);},prefs.fast?500:1400);
+  }else(m.querySelector(".acts .btn.primary:not(:disabled)")||box.firstChild)?.focus();
+}
+function closeModal(){$("#overlay").hidden=true;}
+let toastT;
+function toast(s){const e=$("#toast");e.textContent=s;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,2400);}
+
+/* ================= rendering ================= */
+const NAVI={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',play:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="12" cy="12" r="1.5"/>',
+  empire:'<path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/>',
+  guide:'<path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-5a3 3 0 0 0-3 3"/><path d="M20 4v14h-6"/>',records:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3v2a3 3 0 0 1-3 3M7 6H4v2a3 3 0 0 0 3 3"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'};
+const NAV={home:"Home",play:"Play",empire:"Empire",guide:"Rules",records:"Records",settings:"Settings"};
+function renderRail(){
+  $("#rail").innerHTML=`<div class="logo" aria-hidden="true">M</div>`+Object.keys(NAV).map(r=>
+    `<button class="nav ${route===r?"on":""}" data-route="${r}" aria-current="${route===r?"page":"false"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${NAVI[r]}</svg>${NAV[r]}</button>`).join("");
+}
+const thumbHTML=a=>{const s=artStyle(a.img);return `<div class="thumb${s?" has":""}" style="${s}">${svg(KIND_ICON[a.kind]||"opp")}</div>`;};
+function rc(i){if(i<=6)return[1,i+1];if(i<=12)return[i-5,7];if(i<=18)return[7,7-(i-12)];return[7-(i-18),1];}
+const stack=(n,step,top="")=>Array.from({length:n},(_,k)=>`<i style="transform:translateZ(${k*step}px)">${k===n-1?top:""}</i>`).join("");
+function boardHTML(g,track){
+  const cp=g&&g.players[g.turn],ft=track==="fast",cells=ft?FT:CELLS;
+  const html=cells.map((t,i)=>{const [r,col]=rc(i),s=SPACE[t],idx=FT_INDEX[i];
+    const own=ft&&g?.ftOwn?.[i];
+    const label=ft&&t==="ftbiz"?FT_BIZ[idx].name:ft&&t==="dream"?DREAMS[idx].name:s.name;
+    const price=ft&&t==="ftbiz"?`<div class="price">${fmt(FT_BIZ[idx].price)}</div>`:ft&&t==="dream"?`<div class="price">${fmt(DREAMS[idx].price)}</div>`:"";
+    const pawns=g?g.players.map((q,k)=>q.pos===i&&!q.out&&(q.track||"rat")===track?`<div class="pawn ${cp===q&&g.phase==="moving"?"hop":""}" style="--pc:${PCOL[k]};left:${[6,64,6,64][k]}%;top:${[6,6,64,64][k]}%">${stack(3,3)}</div>`:"").join(""):"";
+    return `<div class="cell ${t==="pay"||t==="cfday"?"pay":t}${i%6===0?" corner":""}${own!=null&&own!==undefined?" owned":""}${cp&&cp.pos===i&&(cp.track||"rat")===track?" here":""}" style="grid-row:${r};grid-column:${col};--tc:${s.color};${own!=null?`--owner:${PCOL[own]}`:""}" title="${esc(label)}">${svg(s.icon)}<div class="lbl">${esc(label)}</div>${price}<div class="pawns">${pawns}</div></div>`;}).join("");
+  const center=ft?`<div class="brand">Fast Track</div><div class="ftinfo"><div>Win by buying <b>your Dream</b></div><div>or adding <b>+$50,000</b> to your CASHFLOW Day income</div><div style="opacity:.75">No bank loans here. Audits, lawsuits and divorce take your cash.</div></div>`
+    :`<div class="brand">MoneyFlow</div>${Object.entries(DECK_INFO).map(([k,v])=>`<div class="deck" data-deck="${k}" style="--dk:${v.color}">${stack(7,2,`${v.name}<small>${g?g.decks[k].length:DECKS[k].length} cards</small>`)}</div>`).join("")}`;
+  return `<div class="board${ft?" ft":""}">${html}<div class="center">${center}</div></div>`;
+}
+function render(){
+  renderRail();
+  const v=$("#view");
+  if(route==="home")v.innerHTML=homeHTML();
+  else if(route==="guide")v.innerHTML=guideHTML();
+  else if(route==="records")v.innerHTML=recordsHTML();
+  else if(route==="settings")v.innerHTML=settingsHTML();
+  else if(route==="empire")v.innerHTML=empireHTML();
+  else v.innerHTML=G?playHTML():ONLINE?lobbyHTML():setupHTML();
+  document.title=route==="play"&&G?`${cur().name} · MoneyFlow`:"MoneyFlow";
+  document.body.classList.toggle("ingame",route==="play"&&!!G);
+  if(route==="play"&&G){
+    document.querySelectorAll(".cube").forEach((c,i)=>{const [x,y]=FACES[G.dice[i]||1];c.style.transition="none";c.style.transform=`rotateX(${x+360*(spins[i]||0)}deg) rotateY(${y+360*(spins[i]||0)}deg)`;void c.offsetWidth;c.style.transition="";});
+    tickBot();
+  }
+}
+function homeHTML(){
+  const s=store.get(STATS,{played:0,wins:[]}),best=s.wins.length?Math.min(...s.wins.map(w=>w.months)):null;
+  const n=Object.values(DECKS).reduce((a,d)=>a+d.length,0);
+  return `<section class="hero">
+    <div><div class="eyebrow">The board game of financial freedom</div><h1>MoneyFlow</h1><div class="sub">Get out of the rat race.</div>
+      <p>Start with a real job, taxes, a mortgage and loans. Draw deals, buy homes and apartment buildings, run businesses, trade stocks. When passive income beats your expenses, you reach the Fast Track. Buy your Dream to win.</p>
+      <div class="ctas">${G?`<button class="btn primary big" data-route="play">Continue game</button><button class="btn big" data-go="new">${confirmKey==="abandon"?"Click again to start over":"New game"}</button>`:`<button class="btn primary big" data-route="play">New game</button>`}<button class="btn big" data-route="guide">Rules</button></div></div>
+    <div class="preview" aria-hidden="true">${boardHTML(null,"rat")}</div>
+  </section>
+  <div class="tiles">
+    <div class="card tile"><div class="eyebrow">Classic rules</div><h3>Rat race, then Fast Track</h3><p>Down payments and mortgages, bank loans at 10% a month, market cards for every player, bankruptcy, and a Fast Track with Dreams.</p></div>
+    <div class="card tile"><div class="eyebrow">${n} cards</div><h3>Four decks</h3><p>${SMALL.length} Small Deals, ${BIG.length} Big Deals, ${MARKET.length} Market cards and ${DOODADS.length} Doodads, shuffled and drawn like a real deck.</p></div>
+    <div class="card tile"><div class="eyebrow">${PROFS.length} jobs</div><h3>Friends or bots</h3><p>Play on one device, online with friends, or against bots that buy with leverage and sell to good buyers.</p></div>
+    <div class="card tile"><div class="eyebrow">This device</div><div class="muted" style="font-size:13px;margin-top:6px">Games started</div><div class="stat">${s.played}</div><div class="muted" style="font-size:13px;margin-top:6px">Wins · fastest</div><div class="stat">${s.wins.length} · ${best===null?"—":yrs(best)}</div></div>
+  </div>`;
+}
+let draft={n:3,names:["You",...BOT_NAMES.slice(0,3)],bot:[false,true,true,true],prof:["-1","-1","-1","-1"],dream:["-1","-1","-1","-1"]};
+const dreamOpts=sel=>`<option value="-1">Random Dream</option>`+DREAMS.map((d,i)=>`<option value="${i}" ${sel==i?"selected":""}>${d.name} · ${fmt(d.price)}</option>`).join("");
+function setupHTML(){
+  const d=draft,opts=k=>`<option value="-1">Random job</option>`+PROFS.map((p,i)=>`<option value="${i}" ${d.prof[k]==i?"selected":""}>${p.name}</option>`).join("");
+  return `${onlineCardHTML()}<div class="setup">
+   <section class="card"><div class="eyebrow">On this device</div><h2 style="font-size:34px;margin:4px 0 16px">Local game</h2>
+     <div class="sh">Players</div>
+     <div class="seg" style="margin:4px 0 16px">${[1,2,3,4].map(n=>`<button data-np="${n}" class="${n===d.n?"on":""}" aria-pressed="${n===d.n}">${n}</button>`).join("")}</div>
+     ${Array.from({length:d.n},(_,k)=>`<div class="prow"><span class="dot" style="background:${PCOL[k]}"></span><input class="field" id="pn${k}" value="${esc(d.names[k])}" maxlength="14" aria-label="Player ${k+1} name">
+       <select class="field" id="pt${k}" aria-label="Player ${k+1} type"><option value="h" ${d.bot[k]?"":"selected"}>Human</option><option value="b" ${d.bot[k]?"selected":""}>Bot</option></select>
+       <select class="field job" id="pp${k}" aria-label="Player ${k+1} job">${opts(k)}</select>
+       <select class="field drm" id="pd${k}" aria-label="Player ${k+1} Dream">${dreamOpts(d.dream[k])}</select></div>`).join("")}
+     <p class="note">Humans share this device and take turns. Bots play their own turns. Your Dream waits for you on the Fast Track.</p>
+     <div style="margin-top:16px"><button class="btn primary big" data-go="start">Start game</button></div></section>
+   <section class="card"><h2 style="font-size:22px;margin-bottom:10px">Jobs</h2>${jobsTable()}</section></div>`;
+}
+const jobsTable=()=>`<div class="tbl"><table class="ptable"><thead><tr><th>Job</th><th>Salary</th><th>Expenses</th><th>Cash flow</th><th>Start cash</th></tr></thead><tbody>
+  ${PROFS.map(p=>{const q=newPlayer("",p,0,false,0);return `<tr><td>${p.name}</td><td class="num">${fmt(p.salary)}</td><td class="num">${fmt(totalExp(q))}</td><td class="num pos">+${fmt(cashflow(q))}</td><td class="num">${fmt(q.cash)}</td></tr>`}).join("")}
+  </tbody></table></div><p class="note">Monthly figures. Start cash is savings plus one month of cash flow. Companies and tickers are fictional. This game is not financial advice.</p>`;
+function syncDraft(){for(let k=0;k<draft.n;k++){const n=$("#pn"+k),p=$("#pp"+k),ty=$("#pt"+k),dr=$("#pd"+k);if(n)draft.names[k]=n.value;if(p)draft.prof[k]=p.value;if(ty)draft.bot[k]=ty.value==="b";if(dr)draft.dream[k]=dr.value;}}
+function startGame(){
+  syncDraft();
+  const players=Array.from({length:draft.n},(_,k)=>{const pi=draft.prof[k]==="-1"?rand(0,PROFS.length-1):+draft.prof[k];return newPlayer(draft.names[k].trim()||`P${k+1}`,PROFS[pi],k,draft.bot[k],draft.dream[k]==="-1"?undefined:+draft.dream[k]);});
+  const human=players.findIndex(p=>!p.bot);
+  newGame(players);VIEW=human<0?0:human;
+  route="play";save();render();
+}
+function newGame(players){
+  G={v:3,players,turn:0,phase:"roll",dice:[1],seq:0,rollId:0,rolls:0,prices:Object.fromEntries(Object.entries(TICKERS).map(([k,v])=>[k,v.base])),gold:3600,log:[],msg:null,offer:null,ftOwn:{},dreamBump:{},winner:null,
+     decks:Object.fromEntries(Object.keys(DECKS).map(k=>[k,shuffle([...DECKS[k].keys()])]))};
+  players.forEach(p=>log(`${p.name}${p.bot?" (bot)":""} starts as ${/^[aeiou]/i.test(p.prof)?"an":"a"} ${p.prof.toLowerCase()} with ${fmt(p.cash)}. Dream: ${DREAMS[p.dream].name}.`,p.id));
+  const s=store.get(STATS,{played:0,wins:[]});s.played++;store.set(STATS,s);
+  sfx.coin();
+}
+const cubeHTML=()=>`<div class="cube">${[1,2,3,4,5,6].map(n=>`<div class="f f${n}">${Array.from({length:9},(_,i)=>`<b class="${({1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]})[n].includes(i)?"on":""}"></b>`).join("")}</div>`).join("")}</div>`;
+function playHTML(){
+  const p=cur(),bot=p.bot,ft=fast(p);
+  let acts;
+  if(bot)acts=`<button class="btn" disabled>Bot is playing…</button>`;
+  else if(!isActor())acts=`<button class="btn" disabled>Waiting for ${esc(p.name)}…</button>${ONLINE.isHost?`<button class="btn sm" data-go="takeover">Let a bot play this seat</button>`:""}`;
+  else if(G.phase==="roll"){
+    if(p.skip>0)acts=`<button class="btn primary" data-a="skip">Skip turn</button>`;
+    else if(ft&&p.ftCharity)acts=[1,2,3].map(n=>`<button class="btn ${n===2?"primary":""}" data-roll="${n}">${n} ${n>1?"dice":"die"}</button>`).join("");
+    else if(ft)acts=`<button class="btn primary big" data-roll="2">Roll</button>`;
+    else if(p.charity>0)acts=`<button class="btn" data-roll="1">1 die</button><button class="btn primary" data-roll="2">2 dice</button>`;
+    else acts=`<button class="btn primary big" data-roll="1">Roll</button>`;
+  }else if(G.phase==="end")acts=`<button class="btn primary big" data-a="next">${G.players.length>1?"End turn":"Next turn"}</button>`;
+  else acts=`<button class="btn" disabled>Moving…</button>`;
+  const msg=G.msg||(bot?`<b>${esc(p.name)}</b> is thinking…`:p.skip>0?`<b>${esc(p.name)}</b> misses ${p.skip} more turn(s)`:isActor()?`<b>${esc(p.name)}</b>, your roll`:`<b>${esc(p.name)}</b>'s turn`);
+  const me=G.players[VIEW]||G.players[0],meCf=fast(me)?me.ftIncome:cashflow(me),mePct=fast(me)?Math.round(Math.max(0,me.ftIncome-(me.ftTarget-50000))/500):Math.min(100,Math.round(totalExp(me)?passive(me)/totalExp(me)*100:0));
+  const track=p.track||"rat";
+  return `<div class="hud"><button class="btn sm menu-m" data-route="home">Menu</button>${ONLINE?`<div class="chip on" title="Room code"><b>Room</b><span class="c" style="color:var(--ink);letter-spacing:.12em">${ONLINE.code}</span></div>`:""}${G.players.map((q,k)=>`<div class="chip ${k===G.turn?"on":""}"><span class="dot" style="background:${PCOL[k]}"></span><b>${esc(q.name)}</b>${q.bot?`<span class="tag">BOT</span>`:""}${ONLINE&&q.uid===NET.uid?`<span class="tag">YOU</span>`:""}${fast(q)?`<span class="track">FAST TRACK</span>`:""}${q.out?`<span class="tag">OUT</span>`:""}<span class="c">${fmt(q.cash)}</span>${q.won?`<span class="tag free">WINNER</span>`:""}</div>`).join("")}
+    <span class="spacer"></span>${ONLINE?`<button class="btn sm" data-go="leave">${confirmKey==="leave"?"Click again to leave":"Leave room"}</button>`:""}<button class="btn sm" data-a="snd" aria-pressed="${prefs.sound}">${prefs.sound?"Sound on":"Sound off"}</button><button class="btn sm" data-a="fx" aria-pressed="${prefs.fx}">${prefs.fx?"3D view":"Flat view"}</button></div>
+  <div class="play">
+    <div class="stagewrap">
+      <div class="stage ${prefs.fx?"fx":""}">${boardHTML(G,track)}</div>
+      <div class="controls"><button class="mini" data-a="sheet" aria-label="Open finances for ${esc(me.name)}"><span>Cash<b>${fmt(me.cash)}</b></span><span>${fast(me)?"CF Day":"Cash flow"}<b class="${meCf>=0?"pos":"neg"}">${meCf>=0?"+":""}${fmt(meCf)}</b></span><span>${fast(me)?"To +$50k":"Freedom"}<b>${Math.min(100,mePct)}%</b></span><i>Details</i></button>
+        <div class="dice" aria-label="Dice: ${G.dice.join(", ")}">${Array.from({length:Math.max(1,G.dice.length)},cubeHTML).join("")}</div>
+        <div class="msg">${msg}</div><div class="acts">${acts}</div></div>
+    </div>
+    <aside class="ledger ${sheetOpen?"open":""}" aria-label="Finances"><div class="sheet-grab"><b>Finances</b><button class="btn sm" data-a="sheet">Close</button></div>${ledgerHTML(me)}</aside>${sheetOpen?`<div class="sheet-bg" data-sheetbg></div>`:""}
+  </div>`;
+}
+const canSellFor=v=>!v.bot&&!v.out&&(ONLINE?v.uid===NET.uid:true);
+function ledgerHTML(v){
+  const mine=v.id===G.turn&&!v.bot&&canAct()&&isActor()&&!fast(v);
+  const row=(l,r,c="")=>`<div class="row ${c}"><span class="l">${l}</span><span class="r">${r}</span></div>`;
+  const tabs=G.players.length>1?`<div class="ptabs" role="tablist">${G.players.map((q,k)=>`<button class="ptab ${k===VIEW?"on":""}" role="tab" aria-selected="${k===VIEW}" data-view="${k}"><span class="dot" style="background:${PCOL[k]};width:10px;height:10px"></span>${esc(q.name)}</button>`).join("")}</div>`:"";
+  const head=`<div class="lhead"><span class="nm">${esc(v.name)}${v.bot?' <span class="muted" style="font-size:13px;font-family:var(--f-body)">bot</span>':""}</span><span class="pr">${esc(v.prof)} · ${monthLabel(v)}</span></div>`;
+  const logHTML=`<div class="lsec"><div class="lt"><span>Events</span><span></span></div><div class="log">${G.log.slice(0,30).map(e=>`<div><span class="d" style="background:${PCOL[e.p]||"var(--muted)"}"></span><span>${esc(e.t)}</span></div>`).join("")||`<div class="empty">No events yet.</div>`}</div></div>`;
+  if(fast(v)){
+    const pct=Math.max(0,Math.min(100,(v.ftIncome-(v.ftTarget-50000))/500));
+    return `${tabs}<div class="lsec">${head}<div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div><div class="kpi"><div class="k">CASHFLOW Day</div><div class="v pos">+${fmt(v.ftIncome)}</div></div><div class="kpi"><div class="k">Goal</div><div class="v">${fmt(v.ftTarget)}</div></div></div>
+      <div class="meter"><div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="cap"><span>New business income</span><span>${fmt(v.ftIncome-(v.ftTarget-50000))} of $50,000</span></div></div></div>
+      <div class="lsec"><div class="lt"><span>Your Dream</span><span>win by buying it</span></div>${row(esc(DREAMS[v.dream].name),fmt(dreamPrice(v)))}${row("Cash needed",fmt(Math.max(0,dreamPrice(v)-v.cash)))}</div>
+      <div class="lsec"><div class="lt"><span>Fast Track businesses</span><span></span></div>${(v.ftBiz||[]).map(n=>row(esc(n),"")).join("")||`<div class="empty">None yet. Land on a business space to buy one.</div>`}</div>${logHTML}`;
+  }
+  const pas=passive(v),ex=totalExp(v),cf=cashflow(v),pct=Math.min(100,ex?pas/ex*100:0);
+  const inc=[[`Salary <small>(${esc(v.prof)})</small>`,v.salary],...v.assets.filter(a=>a.income).map(a=>[esc(a.name),a.income])];
+  const exps=[["Taxes",v.tax],...v.loans.filter(l=>l.payment>0).map(l=>[esc(l.name),l.payment]),["Other expenses",v.other],...(v.children?[[`Children <small>(${v.children} × ${fmt(v.childCost)})</small>`,v.children*v.childCost]]:[])];
+  const assets=v.assets.length?v.assets.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div style="overflow-wrap:anywhere">${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(G.prices[a.ticker])}`:a.kind==="gold"?`${a.qty} oz × ${fmt(G.gold)}`:a.down?`cost ${fmt(a.cost)} · down ${fmt(a.down)}`:`cost ${fmt(a.cost)}`}</div></div><span class="num" style="font-size:12.5px">${a.income?`+${fmt(a.income)}`:fmt(assetValue(a))}</span><span></span></div>`).join(""):`<div class="empty">No assets yet. Land on Opportunity and draw a deal.</div>`;
+  const liab=v.loans.length?v.loans.map(l=>row(esc(l.name),fmt(l.principal))).join(""):`<div class="empty">No debt.</div>`;
+  return `${tabs}<div class="lsec">${head}
+    <div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div>
+      <div class="kpi"><div class="k">Cash flow</div><div class="v ${cf>=0?"pos":"neg"}">${cf>=0?"+":""}${fmt(cf)}</div></div>
+      <div class="kpi"><div class="k">Net worth</div><div class="v">${fmt(netWorth(v))}</div></div></div>
+    <div class="meter"><div class="bar" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="Passive income compared with total expenses"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="cap"><span>Passive <b class="num">${fmt(pas)}</b></span><span>Total expenses <b class="num">${fmt(ex)}</b></span></div></div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Dream: ${esc(DREAMS[v.dream].name)} · ${fmt(dreamPrice(v))}</div></div>
+  ${offerActive()&&v.assets.some(a=>offerMatch(G.offer,a))?`<div class="lsec">${offerRowsFor(v,canSellFor(v))}</div>`:""}
+  <div class="lsec"><div class="lt"><span>Income statement</span><span>monthly</span></div>
+    <div class="sh">Income</div>${inc.map(([l,x])=>row(l,fmt(x))).join("")}${row("Total income",fmt(v.salary+pas),"total")}
+    <div class="sh">Expenses</div>${exps.map(([l,x])=>row(l,fmt(x))).join("")}${row("Total expenses",fmt(ex),"total")}
+    ${row("Monthly cash flow",(cf>=0?"+":"")+fmt(cf),"total")}</div>
+  <div class="lsec"><div class="lt"><span>Balance sheet</span><span>cash flow</span></div>
+    <div class="sh">Assets</div>${assets}<div class="sh">Liabilities</div>${liab}${row("Net worth",fmt(netWorth(v)),"total")}</div>
+  ${mine?`<div class="lsec inl"><button class="btn" data-a="bank">Bank: loans & debts</button></div>`:""}
+  ${logHTML}`;
+}
+function chartSVG(vals){
+  if(!vals||vals.length<2)return `<p class="muted" style="margin:0">The chart fills in as paydays pass.</p>`;
+  const w=600,h=180,pad=8,mn=Math.min(0,...vals),mx=Math.max(...vals),sp=mx-mn||1;
+  const X=i=>pad+i/(vals.length-1)*(w-2*pad),Y=v=>h-pad-(v-mn)/sp*(h-2*pad);
+  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  const zero=mn<0?`<line x1="${pad}" x2="${w-pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)" stroke-dasharray="4 4"/>`:"";
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Net worth over ${vals.length} paydays, from ${fmt(vals[0])} to ${fmt(vals[vals.length-1])}">
+    <defs><linearGradient id="nwg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--gold)" stop-opacity=".35"/><stop offset="1" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>
+    ${zero}<polygon points="${X(0)},${h-pad} ${pts} ${X(vals.length-1)},${h-pad}" fill="url(#nwg)"/><polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+    <circle cx="${X(vals.length-1)}" cy="${Y(vals[vals.length-1])}" r="4" fill="var(--gold-hi)"/></svg>`;
+}
+function empireHTML(){
+  if(!G)return `<div class="eyebrow">Empire</div><h1 style="font-size:40px;margin:4px 0 12px">Your empire</h1><div class="card"><p class="muted" style="margin:0 0 14px">Start a game to build your empire. Everything you buy shows up here.</p><button class="btn primary" data-route="play">Play</button></div>`;
+  const v=G.players[VIEW]||G.players[0],hist=[...(v.hist||[]),Math.round(netWorth(v))];
+  const holdings=v.assets.filter(a=>["re","biz","land"].includes(a.kind)),port=v.assets.filter(a=>!["re","biz","land"].includes(a.kind));
+  const tabs=G.players.length>1?`<div class="seg" style="margin-bottom:14px">${G.players.map((q,k)=>`<button data-view="${k}" class="${k===VIEW?"on":""}" aria-pressed="${k===VIEW}">${esc(q.name)}</button>`).join("")}</div>`:"";
+  const gal=holdings.length?holdings.map(a=>{const s=artStyle(a.img),l=mortOf(v,a);return `<div class="ecard"><div class="pic${s?" has":""}" style="${s}">${svg(KIND_ICON[a.kind]||"opp")}<span>${({re:"Real estate",biz:"Business",land:"Land"})[a.kind]}</span></div>
+    <div class="info"><b>${esc(a.name)}</b><div class="row"><span class="l muted">Cost</span><span class="r">${fmt(a.cost)}</span></div>
+    <div class="row"><span class="l muted">Cash flow</span><span class="r pos">+${fmt(a.income)}/mo</span></div>
+    ${l?`<div class="row"><span class="l muted">Mortgage</span><span class="r">${fmt(l.principal)}</span></div>`:""}</div></div>`;}).join(""):`<p class="muted">No properties or businesses yet. Land on Opportunity to draw a deal.</p>`;
+  const ftGal=(v.ftBiz||[]).map(n=>{const b=FT_BIZ.find(x=>x.name===n);return `<div class="ecard"><div class="pic">${svg("big")}<span>Fast Track</span></div><div class="info"><b>${esc(n)}</b><div class="row"><span class="l muted">Price</span><span class="r">${fmt(b.price)}</span></div><div class="row"><span class="l muted">CASHFLOW Day</span><span class="r pos">+${fmt(b.cf)}</span></div></div></div>`;}).join("");
+  const pf=port.length?port.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div>${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(G.prices[a.ticker])}`:a.kind==="gold"?`${a.qty} oz × ${fmt(G.gold)}`:`5% a year`}</div></div>${sparkSVG(a.kind==="stock"?G.hist?.[a.ticker]:a.kind==="gold"?G.hist?.GOLD:null,36)||"<span></span>"}<span class="num ${assetValue(a)>=a.cost?"pos":"neg"}">${fmt(assetValue(a))}</span></div>`).join(""):`<p class="muted" style="margin:0">No stocks, crypto, gold or CDs yet.</p>`;
+  const pas=passive(v),ex=totalExp(v);
+  return `<div class="eyebrow">Empire</div><h1 style="font-size:40px;margin:4px 0 12px">${v.name==="You"?"Your empire":`${esc(v.name)}'s empire`}</h1>${tabs}
+  <div class="emp-head"><div class="card"><div class="sh" style="margin-top:0">Net worth</div><div class="networth">${fmt(netWorth(v))}</div>
+    <div class="muted" style="font-size:13px">${esc(v.prof)} · ${monthLabel(v)}${fast(v)?" · Fast Track":""}</div>
+    <div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div><div class="kpi"><div class="k">${fast(v)?"CF Day":"Passive"}</div><div class="v pos">+${fmt(fast(v)?v.ftIncome:pas)}</div></div><div class="kpi"><div class="k">Dream</div><div class="v" style="font-size:13px">${esc(DREAMS[v.dream].name)}</div></div></div>
+    ${fast(v)?"":`<div class="meter"><div class="bar"><div class="fill" style="width:${Math.min(100,ex?pas/ex*100:0)}%"></div></div><div class="cap"><span>Passive income</span><span>Total expenses ${fmt(ex)}</span></div></div>`}</div>
+    <div class="card"><div class="sh" style="margin-top:0">Net worth over time</div>${chartSVG(hist)}</div></div>
+  <div class="lt" style="font-size:22px;margin:6px 0 12px"><span>Holdings</span><span>${holdings.length+(v.ftBiz||[]).length} owned</span></div><div class="gallery">${gal}${ftGal}</div>
+  <div class="card portfolio" style="margin-top:18px"><div class="lt"><span>Portfolio</span><span>market value</span></div>${pf}</div>`;
+}
+function guideHTML(){
+  const li=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  return `<div class="eyebrow">Rules</div><h1 style="font-size:40px;margin:4px 0 16px">How to play</h1>
+  <div class="guide">
+    <div class="card"><h3>Goal</h3><p>First leave the rat race: make passive income (rent, business cash flow, dividends, interest) bigger than your total expenses. Then, on the Fast Track, buy your Dream or add $50,000 to your CASHFLOW Day income.</p></div>
+    <div class="card"><h3>Setup</h3>${li(["Each player gets a job with a full income statement and balance sheet.","Start cash is savings plus one month of cash flow.","Each player picks a Dream that waits on the Fast Track."])}</div>
+    <div class="card"><h3>Rat race spaces</h3>${li(["Payday: passing or landing pays your monthly cash flow.","Opportunity: draw a Small Deal or a Big Deal.","Market: buyers and price changes. They apply to every player until the next roll.","Doodad: an expense you must pay.","Charity: give 10% of income to roll 1 or 2 dice for 3 turns.","Baby: add the cost of a child, up to 3.","Downsized: pay one month of total expenses and miss 2 turns."])}</div>
+    <div class="card"><h3>Buying and selling</h3>${li(["You pay only the down payment. The mortgage goes to your liabilities.","A deal's cash flow already includes the mortgage payment.","When a buyer appears, you receive the price minus the mortgage.","Stock prices on a card are valid for everyone until the next roll."])}</div>
+    <div class="card"><h3>Bank</h3>${li(["Borrow in $1,000 steps. Interest is 10% a month and is added to your expenses.","Repay bank loans in $1,000 steps.","Other debts (mortgage, school, car, credit cards, retail) are paid off in full only.","Taxes, other expenses and child costs can't be reduced."])}</div>
+    <div class="card"><h3>Bankruptcy</h3>${li(["If cash flow is negative on Payday and you can't pay, you go bankrupt.","Assets are sold to the bank for half their down payment to pay debts. You miss 3 turns.","If cash flow is still negative, car, credit card and retail debts are halved.","If it is still negative, you are out of the game."])}</div>
+    <div class="card"><h3>Fast Track</h3>${li(["Your CASHFLOW Day income is 100 times your passive income. That is also your starting cash.","Roll 2 dice. Buy businesses to raise CASHFLOW Day income. Each business can be bought once.","Land on your Dream with enough cash to buy it and win. Landing on someone else's Dream raises its price for them by 100%.","Charity lets you roll 1–3 dice. Tax audit and lawsuit take half your cash. Divorce takes all of it.","There are no bank loans on the Fast Track."])}</div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3 style="font-size:20px;margin-bottom:8px">Jobs</h3>${jobsTable()}</div>`;
+}
+function recordsHTML(){
+  const s=store.get(STATS,{played:0,wins:[]}),w=s.wins.slice().sort((a,b)=>a.months-b.months).slice(0,20),e=(s.escapes||[]).slice().sort((a,b)=>a.months-b.months).slice(0,10);
+  const tbl=(rows,extra)=>`<div class="tbl"><table class="ptable"><thead><tr><th>#</th><th>Player</th><th>Job</th><th>Time</th><th>Date</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td>${esc(r.name)}${r.bot?' <span class="muted">(bot)</span>':""}</td><td>${esc(r.prof)}</td><td class="num">${yrs(r.months)}</td><td class="num">${r.date}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="eyebrow">Records</div><h1 style="font-size:40px;margin:4px 0 6px">Records</h1><p class="muted" style="margin:0 0 16px">On this device, bots included.</p>
+  <div class="card" style="margin-bottom:14px"><div class="lt"><span>Fastest wins</span><span></span></div>${w.length?tbl(w):`<p class="muted" style="margin:0">No winners yet.</p>`}</div>
+  <div class="card"><div class="lt"><span>Fastest escapes from the rat race</span><span></span></div>${e.length?tbl(e):`<p class="muted" style="margin:0">No one has escaped yet.</p>`}</div>`;
+}
+function settingsHTML(){
+  const seg=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-pref="${key}" data-val="${v}" class="${prefs[key]===v?"on":""}" aria-pressed="${prefs[key]===v}">${l}</button>`).join("")}</div>`;
+  return `<div class="eyebrow">Settings</div><h1 style="font-size:40px;margin:4px 0 16px">Settings</h1>
+  <div class="card" style="max-width:640px">
+    <div class="switch"><div><b>Sound</b><div class="muted" style="font-size:13px">Dice, coins, cards and wins</div></div>${seg("sound",[[true,"On"],[false,"Off"]])}</div>
+    <div class="switch"><div><b>3D board</b><div class="muted" style="font-size:13px">Tilted board with 3D pieces and dice</div></div>${seg("fx",[[true,"On"],[false,"Off"]])}</div>
+    <div class="switch"><div><b>Game speed</b><div class="muted" style="font-size:13px">Also speeds up bot turns</div></div>${seg("fast",[[false,"Normal"],[true,"Fast"]])}</div>
+    <div class="switch" style="display:block"><b>Install on your phone</b><div class="muted" style="font-size:13px">Add MoneyFlow to your home screen and it opens full screen like an app.</div>
+      <div class="install"><div><b>iPhone</b><ol><li>Open this page's link in Safari.</li><li>Tap the Share button.</li><li>Tap <b>Add to Home Screen</b>.</li></ol></div><div><b>Android</b><ol><li>Open this page's link in Chrome.</li><li>Tap the ⋮ menu.</li><li>Tap <b>Add to Home screen</b>.</li></ol></div></div></div>
+    <div class="switch"><button class="btn danger" data-go="resetStats">${confirmKey==="resetStats"?"Click again to clear":"Clear records"}</button>${G?`<button class="btn danger" data-go="abandon">${confirmKey==="abandon"?"Click again to abandon":"Abandon current game"}</button>`:""}</div>
+  </div>`;
+}
+
+/* ================= online rooms (shared db: rooms/<CODE>) =================
+   The room doc holds the lobby (host, seats) and the whole game as JSON. Only the player whose turn it is
+   (the host for bots) writes the game. Other players send sell requests for open offers through
+   rooms/<CODE>/intents/<their id>; the acting player's device applies them. */
+const CODE_CHARS="ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function errMsg(e){
+  if(e?.code==="invalid_argument")return "You need Contributor access to this page to play online. Ask the owner to share it with you.";
+  if(e?.code==="quota_exceeded")return "The game server is full right now. Try again later.";
+  if(e?.code==="busy")return "The room is busy. Try again in a moment.";
+  if(e?.code==="full")return "That room is full or already started.";
+  if(e?.code==="notfound")return "No room with that code is open right now. The host must keep the game open.";
+  return "Couldn't reach the game server. Check your connection and try again.";
+}
+/* Peer-to-peer stand-in for the claude.ai db, used when the game runs on its own website.
+   The device that creates a room claims the PeerJS id "moneyflow-v1-<CODE>" and holds every room document;
+   other devices connect to it, read a full copy, send their writes to it, and receive each change it broadcasts.
+   Only the calls the online module uses are implemented: doc().get/set/update/onSnapshot/acquire, collection().onSnapshot.
+   ponytail: no TURN relay, so two strict mobile-carrier NATs may fail to connect; add a TURN server if players report that. */
+function makePeerDB(){
+  const PFX="moneyflow-v1-",HOSTKEY="mf.hostdocs.";
+  const docs={},subs={},colSubs={};
+  let peer=null,role=null,code=null,hostConn=null,conns=[],connecting=null;
+  const codeOf=p=>p.split("/")[1];
+  const clone=x=>x==null?undefined:JSON.parse(JSON.stringify(x));
+  const snapOf=p=>({id:p.split("/").pop(),exists:docs[p]!=null,data:()=>clone(docs[p]),metadata:{}});
+  const colSnap=c=>{const n=c.split("/").length+1;return {docs:Object.keys(docs).filter(p=>p.startsWith(c+"/")&&p.split("/").length===n).map(snapOf)};};
+  const emit=p=>{setTimeout(()=>{(subs[p]||[]).forEach(f=>f(snapOf(p)));const c=p.split("/").slice(0,-1).join("/");(colSubs[c]||[]).forEach(f=>f(colSnap(c)));},0);};
+  const emitAll=()=>Object.keys({...docs,...subs}).forEach(emit);
+  const persist=()=>{try{localStorage.setItem(HOSTKEY+code,JSON.stringify(docs));}catch(e){}};
+  function apply(op,p,data){
+    if(op==="set")docs[p]=data;
+    else if(op==="update"){if(docs[p]==null)throw {code:"invalid_argument"};docs[p]={...docs[p],...data};}
+    else if(op==="delete")delete docs[p];
+    emit(p);
+    if(role==="host"){conns.forEach(c=>c.open&&c.send({t:"doc",path:p,data:docs[p]??null}));persist();}
+  }
+  const newPeer=id=>new Promise((res,rej)=>{
+    const pr=id?new Peer(id,{debug:0}):new Peer({debug:0});
+    const t=setTimeout(()=>rej({code:"unavailable"}),12000);
+    pr.on("open",()=>{clearTimeout(t);res(pr);});
+    pr.on("error",e=>{clearTimeout(t);rej({code:e.type==="unavailable-id"?"busy":e.type==="peer-unavailable"?"notfound":"unavailable"});});
+  });
+  async function becomeHost(c,saved){
+    if(role==="host"&&code===c)return;
+    if(peer){try{peer.destroy();}catch(e){}}
+    peer=await newPeer(PFX+c);role="host";code=c;conns=[];
+    if(saved)Object.assign(docs,saved);
+    peer.on("connection",conn=>{
+      conns.push(conn);
+      conn.on("data",m=>{
+        if(m.t==="sync")conn.send({t:"all",docs});
+        if(m.t==="write"&&codeOf(m.path)===code){try{apply(m.op,m.path,m.data);}catch(e){}}
+      });
+      conn.on("close",()=>{conns=conns.filter(x=>x!==conn);});
+    });
+    peer.on("disconnected",()=>{try{peer.reconnect();}catch(e){}});
+  }
+  function joinHost(c){
+    if(role==="host"&&code===c)return Promise.resolve();
+    if(role==="guest"&&code===c&&hostConn?.open)return Promise.resolve();
+    if(connecting&&connecting.c===c)return connecting.p;
+    const p=(async()=>{
+      if(!peer||role==="host"){if(peer){try{peer.destroy();}catch(e){}}peer=await newPeer();}
+      const errP=new Promise((_,rej)=>peer.once("error",e=>rej({code:e.type==="peer-unavailable"?"notfound":"unavailable"})));
+      const conn=peer.connect(PFX+c,{reliable:true});
+      await Promise.race([new Promise((res,rej)=>{
+        const t=setTimeout(()=>rej({code:"notfound"}),9000);
+        conn.on("open",()=>conn.send({t:"sync"}));
+        conn.on("data",m=>{
+          if(m.t==="all"){clearTimeout(t);Object.keys(docs).filter(k=>codeOf(k)===c).forEach(k=>delete docs[k]);Object.assign(docs,m.docs);emitAll();res();}
+          if(m.t==="doc"){if(m.data==null)delete docs[m.path];else docs[m.path]=m.data;emit(m.path);}
+        });
+        conn.on("close",()=>{if(hostConn===conn){hostConn=null;toast("Connection to the host was lost. Reconnecting…");setTimeout(()=>joinHost(c).catch(()=>toast("The host has left. The game resumes when they come back.")),2500);}});
+      }),errP]);
+      role="guest";code=c;hostConn=conn;
+    })().finally(()=>{connecting=null;});
+    connecting={c,p};return p;
+  }
+  function ref(p){return {
+    path:p,id:p.split("/").pop(),
+    async get(){
+      const c=codeOf(p);
+      try{await joinHost(c);}catch(e){
+        if(e.code!=="notfound")throw e;
+        const saved=JSON.parse(localStorage.getItem(HOSTKEY+c)||"null"); // we hosted this room before a reload
+        if(saved){await becomeHost(c,saved);emitAll();}
+        else return {id:p.split("/").pop(),exists:false,data:()=>undefined,metadata:{}};
+      }
+      return snapOf(p);
+    },
+    async set(data){
+      const c=codeOf(p);
+      if(p.split("/").length===2&&!(role&&code===c))await becomeHost(c); // creating a new room makes this device its host
+      return write("set",p,data);
+    },
+    update(data){return write("update",p,data);},
+    delete(){return write("delete",p);},
+    async acquire(){return {acquired:true};}, // the host applies writes one at a time
+    onSnapshot(fn){(subs[p]=subs[p]||[]).push(fn);setTimeout(()=>fn(snapOf(p)),0);return ()=>{subs[p]=subs[p].filter(x=>x!==fn);};},
+  };}
+  async function write(op,p,data){
+    const c=codeOf(p);
+    if(role==="host"&&code===c)return apply(op,p,data);
+    await joinHost(c);
+    if(op==="update"&&docs[p]==null)throw {code:"invalid_argument"};
+    if(op==="delete")delete docs[p];else docs[p]=op==="set"?data:{...docs[p],...data};
+    emit(p);hostConn.send({t:"write",op,path:p,data});
+  }
+  return {
+    doc:ref,
+    collection(c){return {path:c,doc:id=>ref(c+"/"+id),onSnapshot(fn){(colSubs[c]=colSubs[c]||[]).push(fn);setTimeout(()=>fn(colSnap(c)),0);return ()=>{colSubs[c]=colSubs[c].filter(x=>x!==fn);};}};},
+  };
+}
+async function initNet(){
+  try{
+    if(window.claude?.use){
+      const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+      const id=db&&user?await user.id():null;
+      NET=id?{db,uid:id,canWrite:await user.can("data.write")}:false;
+    }else if(window.Peer){
+      let id=store.get("mf.uid",null);if(!id){id="p_"+uid()+uid();store.set("mf.uid",id);}
+      NET={db:makePeerDB(),uid:id,canWrite:true,p2p:true};
+    }else NET=false;
+  }catch(e){NET=false;}
+  render();
+  const code=store.get(ROOMKEY,null);
+  if(NET&&code&&!ONLINE)joinRoom(code,true);
+}
+function readNick(){const n=($("#onick")?.value??store.get(NICK,"")).trim().slice(0,14);if(n)store.set(NICK,n);return n;}
+async function withLease(ref,fn){
+  for(let i=0;i<8;i++){const r=await ref.acquire({holder:NET.uid,ttlMs:4000});if(r.acquired)return fn();await sleep(300+Math.random()*500);}
+  throw {code:"busy"};
+}
+const newSeat=(u,name,bot)=>({uid:u,name,prof:"-1",dream:"-1",bot:!!bot});
+async function createRoom(){
+  const nick=readNick();if(!nick)return toast("Enter a nickname first");
+  try{
+    let code,ref;
+    for(let i=0;i<6;i++){code=Array.from({length:4},()=>pick([...CODE_CHARS])).join("");ref=NET.db.doc("rooms/"+code);if(!(await ref.get()).exists)break;}
+    await ref.set({code,host:NET.uid,status:"lobby",created:Date.now(),seats:[newSeat(NET.uid,nick)],gameJson:null});
+    attach(code);
+  }catch(e){toast(errMsg(e));}
+}
+async function joinRoom(code,silent){
+  code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(code.length!==4){if(!silent)toast("Room codes have 4 characters");return;}
+  const ref=NET.db.doc("rooms/"+code);
+  try{
+    const s=await ref.get();
+    if(!s.exists){store.set(ROOMKEY,null);if(!silent)toast("No room with that code");return;}
+    const r=s.data();
+    if(!r.seats.some(x=>x.uid===NET.uid)){
+      if(silent){store.set(ROOMKEY,null);return;}
+      if(r.status!=="lobby")return toast("That game has already started");
+      if(r.seats.length>=4)return toast("That room is full");
+      const nick=readNick();if(!nick)return toast("Enter a nickname first");
+      await withLease(ref,async()=>{const f=(await ref.get()).data();
+        if(f.seats.some(x=>x.uid===NET.uid))return;
+        if(f.seats.length>=4||f.status!=="lobby")throw {code:"full"};
+        await ref.update({seats:[...f.seats,newSeat(NET.uid,nick)]});});
+    }
+    attach(code,silent);
+  }catch(e){if(!silent)toast(errMsg(e));}
+}
+function attach(code,silent){
+  detach();
+  const ref=NET.db.doc("rooms/"+code);
+  ONLINE={code,ref,room:null,isHost:false,applied:new Set()};store.set(ROOMKEY,code);
+  G=null;seenLog=null;if(!silent)route="play";
+  ONLINE.unsub=ref.onSnapshot(onRoom,e=>toast(errMsg(e)));
+  ONLINE.unsubI=NET.db.collection(`rooms/${code}/intents`).onSnapshot(onIntents,()=>{});
+  render();
+}
+function detach(){if(ONLINE?.unsub)ONLINE.unsub();if(ONLINE?.unsubI)ONLINE.unsubI();ONLINE=null;}
+function leaveRoom(){
+  const o=ONLINE;if(!o)return;
+  detach();store.set(ROOMKEY,null);closeModal();
+  if(o.room?.status==="lobby")withLease(o.ref,async()=>{const f=(await o.ref.get()).data();if(f)await o.ref.update({seats:f.seats.filter(x=>x.uid!==NET.uid)});}).catch(()=>{});
+  G=loadLocal();
+  render();
+}
+function onRoom(snap){
+  if(!ONLINE)return;
+  if(!snap.exists){toast("This room was closed");leaveRoom();return;}
+  const r=snap.data();ONLINE.room=r;ONLINE.isHost=r.host===NET.uid;
+  if(!r.gameJson){G=null;render();return;}
+  let g;try{g=JSON.parse(r.gameJson);}catch(e){return;}
+  if(G&&(g.seq||0)<=(G.seq||0)){render();return;} // our own echo or an older state
+  const first=!G,prevRoll=G?.rollId;
+  G=g;
+  if(first){const i=G.players.findIndex(p=>p.uid===NET.uid);VIEW=i<0?0:i;
+    if(isActor()&&(G.phase==="moving"||G.phase==="event")){G.phase="end";pushState();}}
+  render();
+  if(!first&&G.rollId!==prevRoll&&!isActor())spinDice(G.dice);
+  const head=G.log[0]?.t;
+  if(!first&&head&&head!==seenLog&&!isActor()){toast(head);sfx.card();}
+  seenLog=head;
+}
+// the acting device applies other players' sell requests for the open offer
+function onIntents(qs){
+  if(!ONLINE||!G||!isActor())return;
+  let changed=false;
+  qs.docs.forEach(d=>{const x=d.data();if(!x)return;const key=`${x.uid}:${x.n}`;if(ONLINE.applied.has(key)||(G.applied||[]).includes(key))return;
+    ONLINE.applied.add(key);(G.applied=G.applied||[]).push(key);G.applied=G.applied.slice(-40);
+    const p=G.players.find(q=>q.uid===x.uid),a=p?.assets.find(y=>y.id===x.assetId);
+    if(p&&a&&offerActive()&&G.offer.id===x.offerId&&offerMatch(G.offer,a)){sellOffer(p,a);changed=true;}});
+  if(changed){render();save();}
+}
+async function sendIntent(a){
+  try{await NET.db.doc(`rooms/${ONLINE.code}/intents/${NET.uid}`).set({uid:NET.uid,offerId:G.offer.id,assetId:a.id,n:Date.now()});toast("Sale sent. It goes through on the current player's device.");}
+  catch(e){toast(errMsg(e));}
+}
+async function pushState(){
+  if(!ONLINE||!G)return;
+  if(pushing){dirty=true;return;}
+  pushing=true;G.seq=(G.seq||0)+1;seenLog=G.log[0]?.t;
+  try{await ONLINE.ref.update({gameJson:JSON.stringify(G)});}catch(e){toast(errMsg(e));}
+  pushing=false;
+  if(dirty){dirty=false;pushState();}
+}
+async function editSeats(fn){
+  try{await withLease(ONLINE.ref,async()=>{const f=(await ONLINE.ref.get()).data();if(f.status!=="lobby")return;await ONLINE.ref.update({seats:fn(f.seats)});});}
+  catch(e){toast(errMsg(e));}
+}
+async function startOnline(){
+  const r=ONLINE.room;
+  if(r.seats.length<2)return toast("Wait for a friend to join, or add a bot");
+  const players=r.seats.map((s,k)=>{const pi=s.prof==="-1"?rand(0,PROFS.length-1):+s.prof;const p=newPlayer(s.name,PROFS[pi],k,s.bot,s.dream==="-1"||s.dream==null?undefined:+s.dream);p.uid=s.uid||null;return p;});
+  newGame(players);VIEW=players.findIndex(p=>p.uid===NET.uid);
+  try{await ONLINE.ref.update({status:"playing"});}catch(e){return toast(errMsg(e));}
+  pushState();render();
+}
+function onlineCardHTML(){
+  let body;
+  if(NET===null)body=`<p class="muted" style="margin:0">Connecting to the game server…</p>`;
+  else if(NET===false)body=`<p class="muted" style="margin:0">Online play needs an internet connection. Check yours and reload the page.</p>`;
+  else if(NET.canWrite===false)body=`<p class="muted" style="margin:0">You can watch this page but not play online. Ask the owner to share it with you as a Contributor.</p>`;
+  else{const saved=store.get(ROOMKEY,null);
+    body=`<div class="inl" style="margin-bottom:12px"><label class="sh" for="onick" style="margin:0">Nickname</label><input class="field" id="onick" maxlength="14" placeholder="What friends see" value="${esc(store.get(NICK,""))}" style="flex:1;min-width:160px;max-width:260px"></div>
+    <div class="inl"><button class="btn primary" data-go="create">Create room</button><span class="muted">or</span>
+      <input class="field num" id="ocode" maxlength="4" placeholder="CODE" aria-label="Room code" style="width:110px;text-transform:uppercase;letter-spacing:.2em" value="${esc(saved||"")}"><button class="btn" data-go="join">Join room</button></div>`;}
+  return `<section class="card" style="margin-bottom:18px"><div class="eyebrow">Online</div><h2 style="font-size:28px;margin:4px 0 6px">Play with friends</h2>
+    <p class="muted" style="margin:0 0 14px;max-width:60ch">Create a room and share its 4-letter code. Friends open this page on their phones, tap Play and join with the code. Up to 4 players; empty seats can be bots.</p>${body}</section>`;
+}
+function lobbyHTML(){
+  const r=ONLINE.room;
+  if(!r)return `<div class="card"><p class="muted" style="margin:0">Joining room ${ONLINE.code}…</p></div>`;
+  const host=ONLINE.isHost;
+  const seats=r.seats.map((s,k)=>{const me=s.uid===NET.uid,edit=me||(host&&s.bot);
+    return `<div class="prow"><span class="dot" style="background:${PCOL[k]}"></span>
+      <div style="min-width:0"><b>${esc(s.name)}</b> ${me?'<span class="muted">(you)</span>':""}${s.uid===r.host?' <span class="muted">· host</span>':""}${s.bot?' <span class="muted">· bot</span>':""}</div>
+      ${host&&!me?`<button class="btn sm" data-kick="${k}" aria-label="Remove ${esc(s.name)}">Remove</button>`:"<span></span>"}
+      ${edit?`<select class="field job" data-seatjob="${k}" aria-label="Job for ${esc(s.name)}"><option value="-1">Random job</option>${PROFS.map((p,i)=>`<option value="${i}" ${s.prof==i?"selected":""}>${p.name}</option>`).join("")}</select>
+        <select class="field drm" data-seatdream="${k}" aria-label="Dream for ${esc(s.name)}">${dreamOpts(s.dream??"-1")}</select>`
+        :`<span class="muted job">${s.prof==="-1"?"Random job":PROFS[+s.prof].name}</span><span class="muted drm">${s.dream==null||s.dream==="-1"?"Random Dream":DREAMS[+s.dream].name}</span>`}</div>`;}).join("");
+  return `<div class="setup"><section class="card"><div class="eyebrow">Online room</div>
+    <div class="inl" style="margin:6px 0 4px"><h2 style="font-size:52px;letter-spacing:.14em;color:var(--gold-hi)" class="num">${ONLINE.code}</h2><button class="btn sm" data-go="copycode">Copy code</button></div>
+    <p class="muted" style="margin:0 0 16px">Friends open this page, tap <b>Play</b>, enter this code and tap <b>Join room</b>.</p>
+    <div class="sh">Players · ${r.seats.length} of 4</div>${seats}
+    <div class="inl" style="margin-top:16px">${host?`<button class="btn" data-go="addbot" ${r.seats.length>=4?"disabled":""}>Add a bot</button><button class="btn primary big" data-go="startonline">Start game</button>`:`<span class="muted">Waiting for the host to start…</span>`}
+      <button class="btn danger" data-go="leave">${confirmKey==="leave"?"Click again to leave":"Leave room"}</button></div></section>
+    <section class="card"><h2 style="font-size:22px;margin-bottom:10px">Jobs</h2>${jobsTable()}</section></div>`;
+}
+document.addEventListener("change",e=>{
+  const s=e.target.closest("select[data-seatjob],select[data-seatdream]");if(!s||!ONLINE)return;
+  const k=+(s.dataset.seatjob??s.dataset.seatdream),key=s.dataset.seatjob!=null?"prof":"dream",v=s.value;
+  editSeats(seats=>seats.map((x,i)=>i===k?{...x,[key]:v}:x));
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="ocode")$('[data-go="join"]')?.click();});
+
+/* ================= events ================= */
+function twoClick(key,fn){if(confirmKey!==key){confirmKey=key;render();setTimeout(()=>{if(confirmKey===key){confirmKey=null;render();}},4000);return;}confirmKey=null;fn();}
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-sheetbg]")){sheetOpen=false;render();return;}
+  const b=e.target.closest("button");if(!b||b.closest("#modal"))return;
+  if(b.dataset.a==="sheet"){sheetOpen=!sheetOpen;render();return;}
+  sfx.click();
+  if(b.dataset.route){route=b.dataset.route;render();window.scrollTo(0,0);return;}
+  if(b.dataset.np){syncDraft();draft.n=+b.dataset.np;render();return;}
+  if(b.dataset.pref){prefs[b.dataset.pref]=b.dataset.val==="true";savePrefs();render();return;}
+  if(b.dataset.view!=null){VIEW=+b.dataset.view;render();return;}
+  if(b.dataset.osell){const p=G.players[+b.dataset.pid],a=p?.assets.find(x=>x.id===b.dataset.osell);if(!a||!offerActive()||!canSellFor(p))return;
+    if(ONLINE&&!isActor())return sendIntent(a);
+    sellOffer(p,a);save();render();return;}
+  if(b.dataset.kick!=null&&ONLINE?.isHost){const k=+b.dataset.kick;return editSeats(seats=>seats.filter((_,i)=>i!==k));}
+  const go=b.dataset.go;
+  if(go==="start")return startGame();
+  if(go==="create")return createRoom();
+  if(go==="join")return joinRoom($("#ocode")?.value);
+  if(go==="leave")return twoClick("leave",leaveRoom);
+  if(go==="startonline")return startOnline();
+  if(go==="addbot")return editSeats(seats=>seats.length>=4?seats:[...seats,newSeat(null,BOT_NAMES.find(n=>!seats.some(s=>s.name===n))||"Bot",true)]);
+  if(go==="copycode"){navigator.clipboard?.writeText(ONLINE.code).then(()=>toast("Code copied"),()=>toast(`Room code: ${ONLINE.code}`));return;}
+  if(go==="takeover"&&ONLINE?.isHost&&G){const p=cur();p.bot=true;log(`${p.name} is now played by a bot`);save();render();return;}
+  if(go==="new")return twoClick("abandon",()=>{if(ONLINE)leaveRoom();G=null;store.set(SAVE,null);route="play";render();});
+  if(go==="abandon")return twoClick("abandon",()=>{if(ONLINE)leaveRoom();G=null;store.set(SAVE,null);render();});
+  if(go==="resetStats")return twoClick("resetStats",()=>{store.set(STATS,{played:0,wins:[]});render();});
+  const a=b.dataset.a;
+  if((isBot()||!isActor())&&(b.dataset.roll||["next","skip","bank"].includes(a)))return;
+  if(b.dataset.roll)return roll(+b.dataset.roll);
+  if(a==="next")nextTurn();else if(a==="skip")skipTurn();else if(a==="bank")bankModal();
+  else if(a==="fx"){prefs.fx=!prefs.fx;savePrefs();render();}
+  else if(a==="snd"){prefs.sound=!prefs.sound;savePrefs();render();}
+});
+
+/* ================= boot ================= */
+function loadLocal(){const g=store.get(SAVE,null);return g&&g.v===3?g:null;}
+function start(data){
+  G=data&&data.G!==undefined?data.G:loadLocal();route=data?.route||route;
+  if(G&&G.v!==3)G=null;
+  if(G&&(G.phase==="moving"||G.phase==="event"))G.phase="end";
+  if(G){const h=G.players.findIndex(p=>!p.bot);VIEW=h<0?0:h;}
+  render();
+  initNet();
+}
+window.claude?.hot?.snapshot?.(()=>({G:ONLINE?loadLocal():G,route}));
+window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data??{});
+</script>
+</body>
+</html>
