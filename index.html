@@ -537,7 +537,7 @@ SMALL.push(
   DEAL("re","condo",1,"Luxury condo downtown","A brand-new tower with a rooftop pool. The agent says prices here 'only go up'.",260000,52000,-180,2100),
   DEAL("biz","timeshare",0,"Beach timeshare","Two weeks a year at a resort, forever. Annual maintenance fees are 'small'.",25000,25000,-120));
 BIG.push(DEAL("biz","bigbiz",0,"Trendy restaurant","A celebrity chef wants a partner. It was packed on opening night.",350000,52000,-250,0,"SBA loan"));
-SMALL.push(...TRAPS,()=>stockCard("TMIX"),()=>stockCard("TMIX"));
+SMALL.push(...TRAPS,()=>stockCard("TMIX"),()=>stockCard("TMIX"),()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>stockCard());
 const MARKET=[
  ()=>({kind:"hype",up:true}),()=>({kind:"hype",up:false}),
  M({kind:"buyer",type:"sub",sub:"condo",lo:80,hi:110,title:"Condo buyer",text:"A first-time buyer wants a 2BR/1BA condo and has a pre-approved mortgage."}),
@@ -554,7 +554,7 @@ const MARKET=[
  M({kind:"bizshift",mult:.9,title:"Recession",text:"Customers are cutting back."}),
  M({kind:"bizshift",mult:1.1,title:"Tourist boom",text:"Visitor numbers hit a record."}),
  M({kind:"split"}),M({kind:"crash"}),M({kind:"goldup"}),M({kind:"cryptocrash"}),
- ()=>stockCard(),()=>cryptoCard(),()=>goldCard(),
+ ()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>cryptoCard(),()=>goldCard(),
 ];
 const DECKS={small:SMALL,big:BIG,market:MARKET,doodad:DOODADS};
 const DECK_INFO={small:{name:"Small Deals",color:"#1f8a5b",icon:"opp"},big:{name:"Big Deals",color:"#2a5bd7",icon:"big"},market:{name:"Market",color:"#c48a12",icon:"market"},doodad:{name:"Doodads",color:"#c4456a",icon:"doodad"}};
@@ -562,7 +562,7 @@ const TICKERS={NOVA:{name:"Novatek Robotics",base:20},GRNR:{name:"GreenRiver Ene
   AERO:{name:"SkyLine Airways",base:18},CHIP:{name:"Quantix Chips",base:120},VOLT:{name:"VoltDrive EV",base:45},PHRM:{name:"Helix Pharma",base:60},FOOD:{name:"Harvest Foods",base:30},PLAY:{name:"PixelPlay Games",base:25},
   BTC:{name:"Bitcoin",base:65000,crypto:1},ETH:{name:"Ethereum",base:3200,crypto:1},SOL:{name:"Solana",base:150,crypto:1},DOGE:{name:"Dogecoin",base:.15,crypto:1},TMIX:{name:"Total Market Index Fund",base:100,div:.25}};
 const STOCK_LIST=["NOVA","GRNR","BLUC","MEDX","AERO","CHIP","VOLT","PHRM","FOOD","PLAY"],CRYPTO_LIST=["BTC","ETH","SOL","DOGE"];
-function stockCard(tk){tk=tk||pick(STOCK_LIST);const r=tk==="DIVY"||tk==="TMIX"?.9+Math.random()*.2:.4+Math.random()*1.4;
+function stockCard(tk){tk=tk||pick(STOCK_LIST);const u=Math.random(),r=tk==="DIVY"||tk==="TMIX"?.9+Math.random()*.2:u<.3?.08+Math.random()*.32:u<.7?.6+Math.random()*.8:1.6+Math.random()*1.4;
   return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(TICKERS[tk].base*r*2)/2),ratio:r};}
 function cryptoCard(){const tk=pick(CRYPTO_LIST),r=.3+Math.random()*1.9,v=TICKERS[tk].base*r;return {kind:"stock",ticker:tk,price:v<20?Math.round(v*100)/100:Math.round(v),ratio:r};}
 function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*1600)/10)*10};}
@@ -723,7 +723,7 @@ function rng(seed,t,tk){let h=(seed^Math.imul(t,0x9E3779B1)^Math.imul(tk.charCod
   return ()=>{h=(h+0x6D2B79F5)>>>0;let x=h;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return ((x^(x>>>14))>>>0)/4294967296;};}
 function stepPrice(tk,p,t){
   const r=rng(G.seed||1,t,tk),z=(r()+r()+r()-1.5)*2,jump=r()<.015?(r()<.5?-1:1)*JUMP[tk]*.6*(.45+r()*.65):0;
-  const pull=tk==="TMIX"?.0003:-.02*Math.log(p/baseOf(tk)); // the index fund drifts slowly upward; everything else is pulled back toward its usual price
+  const pull=tk==="TMIX"?.0003:-(tk==="GOLD"?.02:TICKERS[tk]?.crypto?.008:.006)*Math.log(p/baseOf(tk)); // the index fund drifts slowly upward; everything else is pulled back toward its usual price
   return Math.max(tk==="GOLD"?500:.5,p*Math.exp(pull+VOL[tk]*z+jump));
 }
 const anchorOf=tk=>({p:tk==="GOLD"?G.gold:G.prices[tk],t:(G.anchorT||{})[tk]??nowTick()});
@@ -1092,7 +1092,7 @@ function stockModal(p,d){
   openOffer({type:"ticker",ticker:d.ticker,price:d.price,title:`${TICKERS[d.ticker].name} at ${fmt(d.price)}`});
   const tk=TICKERS[d.ticker],held=p.assets.find(a=>a.kind==="stock"&&a.ticker===d.ticker);
   const note=tk.crypto?`${d.ratio<.8?"Crypto sold off hard this week.":d.ratio>1.5?"Crypto is in a hype rally.":"Prices are calm for once."} It has traded around ${fmt(tk.base)}. Swings of 50% happen. No income.`
-    :d.ticker==="TMIX"?`Owns a small slice of every big company. Low fees, slow and steady growth, pays ${fmt(tk.div*100)} per 100 shares every month (about 3% a year). 💡 Most professional investors fail to beat a simple index fund over 20 years.`:tk.div?`Pays ${fmt(tk.div*100)} per 100 shares every month, about 4% a year.`:`${d.ratio<.8?"Shares dropped after a weak earnings report.":d.ratio>1.3?"Strong earnings pushed the stock up.":"The stock trades near its usual range."} Trading range: ${fmt(tk.base*.4)}–${fmt(tk.base*1.8)}. No dividend.`;
+    :d.ticker==="TMIX"?`Owns a small slice of every big company. Low fees, slow and steady growth, pays ${fmt(tk.div*100)} per 100 shares every month (about 3% a year). 💡 Most professional investors fail to beat a simple index fund over 20 years.`:tk.div?`Pays ${fmt(tk.div*100)} per 100 shares every month, about 4% a year.`:`${d.ratio<.45?"Bargain! The company hit a rough patch and shares crashed. If it recovers, they could be worth many times more.":d.ratio<.8?"Shares dropped after a weak earnings report.":d.ratio>1.5?"Peak price! Investors are excited. A great moment to sell if you own it.":d.ratio>1.3?"Strong earnings pushed the stock up.":"The stock trades near its usual range."} Trading range: ${fmt(tk.base*.4)}–${fmt(tk.base*1.8)}. No dividend.`;
   tradeModal(p,{title:`${tk.name} · ${d.ticker}`,price:d.price,unit:tk.crypto?"/ coin":"/ share",held,qtyQ:tk.crypto?"Coins to buy (decimals allowed)":"Shares to buy",def:tk.crypto?.1:100,step:tk.crypto?.01:10,dec:!!tk.crypto,
     body:`<p>${note}</p><div class="sh">Recent prices</div>${sparkSVG(liveSeries(d.ticker))}`,
     botBuy:tk.div?true:d.ratio<(tk.crypto?.6:.7),share:tk.div?.25:tk.crypto?.08:.3,
