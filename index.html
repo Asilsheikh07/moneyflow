@@ -1194,7 +1194,7 @@ function marketCard(p,d){
   settlePrices();
   const mk=DECK_INFO.market;
   nextArt=({vacancy:"vacancy",repair:"roof",bizshift:d.mult<1?"recession":"tourism",split:"stocks",crash:"crash",goldup:"gold",cryptocrash:"bitcoin",buyer:"handshake"})[d.kind]||"";
-  const show=(title,text,tone)=>modal({kicker:mk.name,icon:mk.icon,tone:tone||mk.color,title,body:`<p>${text}</p>`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});
+  const show=(title,text,tone)=>log(`${p.name} drew a market card: ${title}`)||modal({kicker:mk.name,icon:mk.icon,tone:tone||mk.color,title,body:`<p>${text}</p>`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});
   const own=f=>p.assets.filter(f);
   switch(d.kind){
     case "stock": return stockModal(p,d);
@@ -1483,6 +1483,15 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
   }else(m.querySelector(".acts .btn.primary:not(:disabled)")||box.firstChild)?.focus();
 }
 function closeModal(){$("#overlay").hidden=true;}
+// phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
+const BUILD="1792009135";
+function checkUpdate(){
+  if(BUILD==="dev"||document.hidden)return;
+  fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
+    if(m&&m[1]!==BUILD&&!$("#upd")){const b=document.createElement("button");b.id="upd";b.className="btn primary";b.textContent="New version: tap to update";
+      b.style.cssText="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:99";b.onclick=()=>location.reload();document.body.appendChild(b);}}).catch(()=>{});
+}
+setInterval(checkUpdate,90000);document.addEventListener("visibilitychange",checkUpdate);
 let toastT;
 function toast(s,ms=2400){const e=$("#toast");e.textContent=s;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,ms);}
 
