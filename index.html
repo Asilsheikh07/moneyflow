@@ -1459,8 +1459,11 @@ function checkLevelUps(){
 }
 
 /* ================= modal / toast ================= */
+// bots decide off screen: nobody sees a bot's card, only the result line
+let botBusy=false,modalSeq=0;
 function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
-  const m=$("#modal"),botTurn=isBot()&&bot!=null;
+  const m=$("#modal"),botTurn=isBot()&&bot!=null,myId=++modalSeq;
+  if(!botTurn&&botBusy){toast("One moment, a bot is playing");return;}
   m.style.setProperty("--tone",tone||"var(--navy)");
   const art=artStyle(nextArt);nextArt="";
   m.innerHTML=`<div class="mtop${art?" photo":""}" style="${art}"><div class="kick">${icon?svg(icon):""}${kicker||""}</div><h3 id="mt">${title}</h3></div><div class="mb">${botTurn?`<div class="botnote">${esc(cur().name)} (bot) is deciding…</div>`:""}<div id="mbody">${body}</div></div><div class="acts"></div>`;
@@ -1472,19 +1475,21 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
       if(G&&G.phase==="event"&&/^(Pass|No thanks|Not now)$/.test(a.label)){const t=document.createElement("i");t.innerHTML=title;log(`${cur().name} passed on ${t.textContent}`);}
       if(!a.keep)closeModal();a.fn&&a.fn();};box.appendChild(b);});
   m.querySelector("#mbody").onclick=onBody||null;
-  $("#overlay").hidden=false;
-  if(!silent)sfx.card();
+  if(botTurn)botBusy=true;else $("#overlay").hidden=false;
+  if(!silent&&!botTurn)sfx.card();
   if(lastDeck){document.querySelector(`.deck[data-deck="${lastDeck}"]`)?.classList.add("drawn");lastDeck=null;}
   if(botTurn){
     setTimeout(()=>{let i=typeof bot==="function"?bot():bot;const btns=[...box.children];
       if(!actions[i]||actions[i].disabled)i=actions.length-1;
-      btns.forEach(b=>b.disabled=false);btns[i].style.outline="3px solid var(--gold)";
-      setTimeout(()=>btns[i].click(),prefs.fast?250:650);},prefs.fast?500:1400);
+      const seen=G.log[0];btns.forEach(b=>b.disabled=false);btns[i].click();
+      if(botBusy&&modalSeq===myId){btns[btns.length-1].click();botBusy=false;} // refused (e.g. not enough cash): pass
+      const fresh=[];for(const e of G.log){if(e===seen||fresh.length>=3)break;fresh.push(e.t);}
+      if(fresh.length)toast(fresh.reverse().join(" · "),3500);},prefs.fast?200:700);
   }else(m.querySelector(".acts .btn.primary:not(:disabled)")||box.firstChild)?.focus();
 }
-function closeModal(){$("#overlay").hidden=true;}
+function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792009135";
+const BUILD="1792010067";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
