@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>MoneyFlow</title>
+<title>Risk Road</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -108,7 +108,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 .hud .spacer{flex:1}
 /* walnut table under the board */
 .stagewrap{position:relative;border:1px solid var(--line);border-radius:24px;overflow:hidden;
-  background:radial-gradient(ellipse at 50% 35%,rgba(255,220,170,.10),transparent 65%),
+  background:radial-gradient(ellipse at 50% 35%,rgba(255,220,170,.10),transparent 65%),url(img/table.jpg) center/cover,
     repeating-linear-gradient(91deg,rgba(0,0,0,.18) 0 2px,transparent 2px 9px,rgba(255,255,255,.025) 9px 11px,transparent 11px 23px),
     linear-gradient(180deg,#3a2718,#22160d)}
 .preview{background:radial-gradient(ellipse at 50% 40%,rgba(255,220,170,.10),transparent 65%),repeating-linear-gradient(91deg,rgba(0,0,0,.18) 0 2px,transparent 2px 9px,rgba(255,255,255,.025) 9px 11px,transparent 11px 23px),linear-gradient(180deg,#3a2718,#22160d)}
@@ -150,14 +150,64 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 .controls .msg.warn{color:var(--bad);font-weight:700}
 .controls .acts{display:flex;gap:8px;flex-wrap:wrap}
 .dice{display:flex;gap:14px;perspective:600px;padding:4px}
-.cube{width:44px;height:44px;position:relative;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.2,.9,.25,1.05)}
-.cube .f{position:absolute;inset:0;background:radial-gradient(circle at 30% 25%,#fffdf7,#efe5cf);border-radius:10px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15),inset 0 -3px 6px rgba(0,0,0,.12)}
+.die{position:relative;width:46px;height:46px;transform-style:preserve-3d}
+.die .dsh{position:absolute;left:6%;right:6%;bottom:-10px;height:12px;border-radius:50%;background:radial-gradient(rgba(0,0,0,.6),transparent 70%);filter:blur(2px)}
+.dice.throw .die{animation:toss 1s cubic-bezier(.25,.8,.3,1) both}
+.dice.throw .die:nth-child(2){animation-delay:.07s}
+.dice.throw .dsh{animation:tossh 1s both}
+@keyframes toss{0%{translate:-120px -50px}30%{translate:-28px 0}42%{translate:-15px -16px}56%{translate:-5px 0}68%{translate:-2px -5px}80%,100%{translate:0 0}}
+@keyframes tossh{0%{opacity:.15;scale:.5}30%{opacity:1;scale:1}42%{opacity:.55;scale:.8}56%,100%{opacity:1;scale:1}}
+.cube .core{position:absolute;inset:3px;background:#e7dcc4}
+.cube{width:46px;height:46px;position:relative;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.2,.9,.25,1.05)}
+.cube .f{position:absolute;inset:0;background:radial-gradient(circle at 28% 22%,#fff 0,#f8f2e4 40%,#e4d8bd 100%);border-radius:9px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;box-shadow:inset 0 0 0 1px rgba(110,90,60,.28),inset 2px 2px 3px rgba(255,255,255,.95),inset -3px -4px 7px rgba(90,70,40,.3)}
 .cube .f b{width:66%;aspect-ratio:1;margin:auto;border-radius:50%}
-.cube .f b.on{background:radial-gradient(circle at 40% 35%,#3b4152,#0d1018);box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}
-.cube .f1 b.on{background:radial-gradient(circle at 40% 35%,#e14c3c,#8f1d12)}
-.cube .f1{transform:translateZ(22px)} .cube .f6{transform:rotateY(180deg) translateZ(22px)}
-.cube .f2{transform:rotateY(90deg) translateZ(22px)} .cube .f5{transform:rotateY(-90deg) translateZ(22px)}
-.cube .f3{transform:rotateX(90deg) translateZ(22px)} .cube .f4{transform:rotateX(-90deg) translateZ(22px)}
+.cube .f b.on{background:radial-gradient(circle at 50% 40%,#000 0 42%,#262a33 68%,#5b606d 100%);box-shadow:inset 0 2px 2px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.85)}
+.cube .f1 b.on{width:80%;background:radial-gradient(circle at 50% 40%,#5e0b05 0 40%,#b3261a 70%,#d9574a 100%)}
+.cube .f1{transform:translateZ(23px)} .cube .f6{transform:rotateY(180deg) translateZ(23px)}
+.cube .f2{transform:rotateY(90deg) translateZ(23px)} .cube .f5{transform:rotateY(-90deg) translateZ(23px)}
+.cube .f3{transform:rotateX(90deg) translateZ(23px)} .cube .f4{transform:rotateX(-90deg) translateZ(23px)}
+
+/* heroes: people walking the board instead of tokens */
+.fx .board{--tilt:44deg}
+.heroes{position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d;transform:translateZ(4px)}
+.walker{position:absolute;width:0;height:0;transform-style:preserve-3d;--st:.19s;transition:left var(--st) cubic-bezier(.45,0,.55,1),top var(--st) cubic-bezier(.45,0,.55,1);--hh:calc(var(--bw,700px)*.17)}
+.walker.jump{transition:none}
+.walker .hsh{position:absolute;width:calc(var(--hh)*.56);height:calc(var(--hh)*.22);left:calc(var(--hh)*-.28);top:calc(var(--hh)*-.11);border-radius:50%;background:radial-gradient(rgba(0,0,0,.65),transparent 70%)}
+.walker .hsh::after{content:"";position:absolute;inset:10%;border-radius:50%;border:2px solid var(--pc);opacity:.85}
+.walker.cur .hsh::after{box-shadow:0 0 12px var(--pc),inset 0 0 8px var(--pc)}
+.walker .hfig{position:absolute;bottom:0;left:calc(var(--hh)*-.3);width:calc(var(--hh)*.6);height:var(--hh);transform-origin:50% 100%;transform:rotateX(calc(-1*var(--tilt,0deg)))}
+.walker img{width:100%;height:100%;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
+.walker img{transform-origin:50% 100%}
+.walker .hfig{transition:transform .22s ease-out}
+.walker.jump .hfig{transition:none}
+.walker.turn .hfig{transform:rotateX(calc(-1*var(--tilt,0deg))) rotateY(-30deg)}
+.walker.flip img{transform:scaleX(-1)}
+/* one stride per cell: push off, lean forward, land with a small squash; feet alternate */
+.walker.sa img{animation:strideA var(--st) ease-out}
+.walker.sb img{animation:strideB var(--st) ease-out}
+.walker.sa .hsh,.walker.sb .hsh{animation:strideSh var(--st) ease-out}
+@keyframes strideA{0%{translate:0 0;rotate:0deg;scale:1 1}40%{translate:0 -9%;rotate:5deg;scale:.98 1.03}78%{translate:0 0;rotate:2deg;scale:1.04 .95}100%{translate:0 0;rotate:0deg;scale:1 1}}
+@keyframes strideB{0%{translate:0 0;rotate:0deg;scale:1 1}40%{translate:0 -8%;rotate:3deg;scale:.98 1.03}78%{translate:0 0;rotate:.5deg;scale:1.04 .95}100%{translate:0 0;rotate:0deg;scale:1 1}}
+@keyframes strideSh{40%{scale:.8;opacity:.65}78%{scale:1.06;opacity:1}}
+.walker.l6 img{filter:drop-shadow(0 0 6px rgba(241,216,152,.95)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.walker.l7 img{filter:drop-shadow(0 0 7px rgba(140,220,255,.95)) drop-shadow(0 0 3px #fff)}
+.walker.noimg img{display:none}
+.walker.noimg .hfig::before{content:"";position:absolute;bottom:0;left:15%;width:70%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.75),transparent 42%),var(--pc);box-shadow:inset 0 0 0 2px rgba(241,216,152,.9)}
+.walker.lvlup .hfig::after{content:"";position:absolute;inset:-30% -70%;background:radial-gradient(rgba(241,216,152,.9),transparent 60%);animation:burst 1.8s ease-out forwards}
+@keyframes burst{from{opacity:1;scale:.3}to{opacity:0;scale:1.7}}
+.herocard{display:flex;gap:12px;align-items:center}
+.herocard img{width:64px;height:100px;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6));flex:none}
+.wardrobe{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.wd{flex:none;width:52px;height:64px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:3px;cursor:pointer}
+.wd img{width:100%;height:100%;object-fit:contain;object-position:50% 100%}
+.wd.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(241,216,152,.35)}
+.herocard .hl{font-family:var(--f-display);font-size:19px;color:var(--gold-hi);line-height:1.15}
+.missions{margin-top:8px}
+.missions summary{cursor:pointer;font-weight:700;font-size:13px;padding:4px 0}
+.mis{display:flex;gap:8px;font-size:12.5px;padding:4px 0;color:var(--muted)}
+.mis.ok{color:var(--ink)}
+.mis i{width:16px;flex:none;text-align:center;font-style:normal}
+.lvlimg{display:block;height:230px;max-width:100%;object-fit:contain;margin:0 auto 10px;filter:drop-shadow(0 8px 12px rgba(0,0,0,.6))}
 
 /* ledger */
 .ledger{background:linear-gradient(180deg,var(--surface),#0f141b);border:1px solid var(--line);border-radius:20px;overflow:hidden;min-width:0}
@@ -267,7 +317,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
   .menu-m{display:inline-flex}
   .stagewrap{border-radius:18px}
   .stage{padding:12px 6px}
-  .fx .board{transform:rotateX(26deg);margin-block:-2%}
+  .fx .board{transform:rotateX(26deg);margin-block:-2%;--tilt:26deg}
   .board{gap:3px;padding:9px;border-radius:12px}
   .cell .lbl{display:none}
   .cell.corner .lbl{display:block;font-size:6.5px}
@@ -360,21 +410,35 @@ const savePrefs=()=>store.set(PREF,prefs);
 /* ================= sound (synthesized) ================= */
 let AC=null;
 function ac(){if(!prefs.sound)return null;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();return AC}catch(e){return null}}
-function tone(f,dur,type="sine",vol=.12,when=0){const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+when;
-  o.type=type;o.frequency.setValueAtTime(f,t0);g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+dur+.02);}
-function noise(dur,vol=.12,freq=2500,when=0){const c=ac();if(!c)return;const b=c.createBuffer(1,Math.ceil(c.sampleRate*dur),c.sampleRate),d=b.getChannelData(0);
+let BUS=null;
+function out(){const c=ac();if(!BUS){const dry=c.createGain(),rv=c.createConvolver(),wet=c.createGain(),len=Math.floor(c.sampleRate*1.3),ir=c.createBuffer(2,len,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
+  rv.buffer=ir;wet.gain.value=.14;dry.connect(c.destination);dry.connect(rv).connect(wet).connect(c.destination);BUS=dry;}return BUS;}
+function tone(f,dur,type="sine",vol=.12,when=0,f2){const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+when;
+  o.type=type;o.frequency.setValueAtTime(f,t0);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+dur);g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g).connect(out());o.start(t0);o.stop(t0+dur+.02);}
+function noise(dur,vol=.12,freq=2500,when=0,type="bandpass",q=1,att=0){const c=ac();if(!c)return;const b=c.createBuffer(1,Math.ceil(c.sampleRate*dur),c.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t0=c.currentTime+when;
-  f.type="bandpass";f.frequency.value=freq;g.gain.value=vol;s.buffer=b;s.connect(f).connect(g).connect(c.destination);s.start(t0);}
+  f.type=type;f.frequency.value=freq;f.Q.value=q;if(att){g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(vol,t0+att);}else g.gain.value=vol;
+  s.buffer=b;s.connect(f).connect(g).connect(out());s.start(t0);}
+// a die hitting a wooden table: a sharp click plus a short hollow knock
+function knock(when,v){noise(.025,v,2600+Math.random()*900,when,"bandpass",.8);tone(200+Math.random()*90,.08,"sine",v*.8,when,120);tone(1200+Math.random()*500,.03,"triangle",v*.15,when);}
+let stepN=0;
 const sfx={
-  roll(){for(let i=0;i<7;i++)noise(.05,.18,1200+Math.random()*1800,i*.11);},
-  step(){tone(560,.06,"triangle",.07);},
-  coin(){tone(988,.08,"square",.045);tone(1319,.18,"square",.045,.07);},
-  card(){noise(.2,.1,5200);},
-  bad(){tone(196,.3,"sawtooth",.045);tone(147,.35,"sawtooth",.045,.12);},
-  win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.28,"triangle",.1,i*.11));},
-  click(){tone(740,.03,"triangle",.045);},
-  alarmUp(){[880,1175,880,1175].forEach((f,i)=>tone(f,.12,"square",.06,i*.14));},
-  alarmDown(){[440,330,440,330].forEach((f,i)=>tone(f,.16,"sawtooth",.05,i*.18));},
+  roll(){ // shake in the hand, then the dice bounce and settle on wood
+    for(let i=0;i<9;i++)noise(.02,.06,3800+Math.random()*1500,i*.038,"bandpass",2.2);
+    [0,.06].forEach(o=>[.4,.56,.68,.77,.83,.87].forEach((t,i)=>knock(t+o+Math.random()*.02,[.5,.34,.24,.15,.09,.05][i])));
+    noise(.35,.025,1400,.5,"bandpass",1.5);},
+  step(){const lo=stepN++%2?1:.85;noise(.06,.09,450*lo,0,"lowpass",.7);tone(95*lo,.07,"sine",.09,0,60);},
+  coin(){[0,.07].forEach(w=>[2637,3520,4699,5920].forEach((f,i)=>tone(f*(1+Math.random()*.012),.22+.12*(3-i),"sine",.032/(i+1),w)));noise(.02,.06,6500,0,"highpass",.7);},
+  card(){noise(.16,.09,3600,0,"bandpass",.6,.05);noise(.03,.07,1700,.15,"bandpass",1);},
+  bad(){tone(110,.45,"sine",.13,0,65);noise(.12,.07,300,0,"lowpass",.7);[392,311].forEach((f,i)=>tone(f,.5,"triangle",.045,.12+i*.24));},
+  win(){[523,659,784,1047].forEach((f,i)=>{tone(f,.9,"triangle",.07,i*.12);tone(f*1.004,.9,"sine",.04,i*.12);});
+    [523,659,784,1047].forEach(f=>tone(f,1.5,"triangle",.045,.6));
+    for(let i=0;i<45;i++)noise(.02,.045,2300+Math.random()*2200,.55+Math.random()*1.7,"bandpass",1.4);},
+  levelUp(){[784,988,1175,1568,1976].forEach((f,i)=>{tone(f,.5,"sine",.07,i*.08);tone(f*2,.3,"sine",.015,i*.08);});noise(.9,.03,7000,.1,"highpass",.7,.3);setTimeout(()=>sfx.coin(),450);},
+  click(){noise(.012,.06,3000,0,"highpass",.7);tone(1800,.015,"sine",.02);},
+  alarmUp(){[0,.5].forEach(w=>{tone(1318,.25,"sine",.1,w);tone(1760,.4,"sine",.1,w+.13);});},
+  alarmDown(){[0,.55].forEach(w=>{tone(659,.3,"sine",.1,w);tone(523,.45,"sine",.1,w+.16);});},
 };
 let WL=null;
 function keepAwake(){try{if(!WL||WL.released)navigator.wakeLock?.request("screen").then(l=>WL=l,()=>{});}catch(e){}}
@@ -570,7 +634,7 @@ function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*160
 const BOT_NAMES=["Ava","Leo","Mia","Noah","Zoe","Kai"];
 
 /* photos: drop files into img/<key>.jpg and list the key here; cards fall back to a styled header without one */
-const IMAGES=new Set("atm bitcoin carshare carwash coffee complex condo container daycare dental duplex ethereum fixer foodtruck gold gym hotel house21 house32 land laundromat plex12 plex4 plex8 solar stocks storage tutoring vending website".split(" "));
+const IMAGES=new Set("atm baby billboard bitcoin carshare carwash charity coffee complex condo container crash daycare dental downsized duplex ethereum fixer foodtruck fund gold gym handshake hotel house21 house32 land laundromat opportunity payday plex12 plex4 plex8 recession roof solar stocks storage tourism tutoring vacancy vending website".split(" "));
 const IMG_BY_TITLE={"Condo 2BR/1BA":"condo","House 2BR/1BA":"house21","House 3BR/2BA":"house32","Fixer-upper 3BR/2BA":"fixer","Duplex":"duplex","Vending machines":"vending","Laundromat stake":"laundromat","ATM machine":"atm","Used food truck":"foodtruck","Car-share vehicle":"carshare","Niche website":"website","Billboard lease":"billboard","Storage container":"container","Land, 10 acres":"land","Professional certification":"course","Certificate of deposit":"bank",
   "4-plex":"plex4","8-plex":"plex8","12-unit apartment building":"plex12","24-unit apartment complex":"complex","Car wash":"carwash","Daycare center":"daycare","Coffee franchise":"coffee","Dental clinic":"dental","Gym franchise":"gym","Tutoring center":"tutoring","Self-storage facility":"storage","Boutique hotel":"hotel","Solar farm":"solar",
   "New smartphone":"phone","Friend's wedding":"wedding","Car repair":"carrepair","Dentist":"dentist","Family vacation":"vacation","Washing machine":"washer","Unpaid loan":"loan","Speeding ticket":"ticket","Big-screen TV":"tv","Birthday party":"party","Medical bill":"medical","New laptop":"laptop","Vet bill":"vet","Home repair":"homerepair","Lifestyle creep":"lifestyle","Gym membership":"gymmember"};
@@ -888,20 +952,22 @@ function roll(nd){
 }
 function spinDice(d){
   sfx.roll();
+  const dc=document.querySelector(".dice");if(dc){dc.classList.remove("throw");void dc.offsetWidth;dc.classList.add("throw");}
   document.querySelectorAll(".cube").forEach((c,i)=>{spins[i]=(spins[i]||0)+2;const [x,y]=FACES[d[i]||1];c.style.transform=`rotateX(${x+360*spins[i]}deg) rotateY(${y+360*spins[i]}deg)`;});
 }
 function step(p,n){
   if(n===0){G.phase="event";render();save();handleCell(p);return;}
-  p.pos=(p.pos+1)%24;sfx.step();
+  p.pos=(p.pos+1)%24;
   if(fast(p)){if(FT[p.pos]==="cfday")cashflowDay(p);}
   else if(CELLS[p.pos]==="pay")payday(p);
   render();
   if(G.bkNote&&G.bkNote.pid===p.id){G.bkNote=null;G.phase="event";render();save();return showBankrupt(p);}
-  setTimeout(()=>step(p,n-1),prefs.fast?90:230);
+  setTimeout(()=>step(p,n-1),prefs.fast?90:195);
 }
 function done(){closeModal();G.phase="end";afterChange();}
 function afterChange(){
   G.players.forEach(p=>{
+    progress(p);
     if(!fast(p)&&!p.out&&passive(p)>totalExp(p)&&badDebt(p)===0){enterFastTrack(p);pendingWins.push({id:p.id,how:"escape"});}
     if(fast(p)&&p.ftIncome>=p.ftTarget)declareWinner(p,`CASHFLOW Day income reached ${fmt(p.ftIncome)}`);
   });
@@ -1035,7 +1101,7 @@ function trapModal(p,d){
         p.assets.push({id:uid(),kind:"trap",type:d.type,name:d.title,cost:c,income:d.choose?Math.round(c*d.rate):(d.income||0),trapLeft:d.choose?rand(1,4):1,refund:luck?(d.luckRefund??d.refund??0):(d.refund||0),raise:luck?d.luckRaise||0:0,lesson:luck?d.lessonLucky:d.lesson,lucky:luck,img:""});
         if(d.fee)p.loans.push({id:uid(),name:`Contract: ${d.title}`,principal:0,payment:d.fee,kind:"sub",monthsLeft:d.months});
         log(`${p.name} put ${fmt(c)} into "${d.title}"`);sfx.coin();done();}},
-      {label:"No thanks",fn:done}],
+      {label:"No thanks",fn:()=>{p.dodged=(p.dodged||0)+1;done();}}],
     bot:()=>chance(.2)&&p.cash>=(d.choose?amount:d.cost)?0:1});
 }
 // trap assets play out on payday: a Ponzi pays a couple of times then vanishes, a pumped token crashes, contracts run their course
@@ -1174,7 +1240,7 @@ function babyCell(p){
 function charityCell(p){
   const t=SPACE.charity,amt=r10((p.salary+passive(p))*.1);
   modal({kicker:t.name,icon:t.icon,tone:t.color,title:"Give 10% to charity",body:`<p>Donate 10% of your total income and for your next 3 turns you may roll 1 or 2 dice. Charity is optional.</p>${facts([["Donation",fmt(amt)],["Your cash",fmt(p.cash)]])}`,
-    actions:[{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.charity=3;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],bot:()=>p.cash>amt+2*reserve(p)&&chance(.45)?0:1});
+    actions:[{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.charity=3;p.gave=1;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],bot:()=>p.cash>amt+2*reserve(p)&&chance(.45)?0:1});
 }
 function downCell(p){
   const t=SPACE.down,lose=Math.round(totalExp(p)/2),note=mustPay(p,lose);p.skip=1;log(`${p.name} was downsized: −${fmt(lose)}, misses 1 turn`);sfx.bad();
@@ -1213,7 +1279,7 @@ function handleFast(p){
       const amt=r10(p.ftIncome*.1);
       if(p.ftCharity)return box("Charity","<p>You already may roll 1 or 2 dice for the rest of the game.</p>");
       return box("Charity",`<p>Donate ${fmt(amt)} and for the rest of the game you may choose to roll 1 or 2 dice.</p>${facts([["Donation",fmt(amt)],["Your cash",fmt(p.cash)]])}`,null,
-        [{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.ftCharity=true;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],()=>p.cash>amt*4&&chance(.5)?0:1);
+        [{label:"Donate",primary:1,disabled:p.cash<amt,fn:()=>{p.cash-=amt;p.ftCharity=true;p.gave=1;log(`${p.name} donated ${fmt(amt)}`);done();}},{label:"Not now",fn:done}],()=>p.cash>amt*4&&chance(.5)?0:1);
     }
     case "audit":{const l=Math.round(p.cash/2);p.cash-=l;log(`${p.name}: tax audit −${fmt(l)}`);sfx.bad();return box("Tax audit",`<p>The audit found problems. You pay half your cash.</p>${facts([["Paid",fmt(-l),"neg","hl"]])}`);}
     case "lawsuit":{const l=Math.round(p.cash/2);p.cash-=l;log(`${p.name}: lawsuit −${fmt(l)}`);sfx.bad();return box("Lawsuit",`<p>You were sued and settled. You lose half your cash.</p>${facts([["Paid",fmt(-l),"neg","hl"]])}`);}
@@ -1265,6 +1331,114 @@ function showWin(w){
     actions:[{label:"Continue",primary:1,fn:()=>{if(pendingWins.length)showWin(pendingWins.shift());else tickBot();}}],bot:0});
 }
 
+/* ================= heroes, missions and levels ================= */
+const TIERS=["Rat Racer","Saver","Investor","Business Owner","Tycoon","Legend","Icon"];
+const MS=(id,name,text,ok)=>({id,name,text,ok});
+const realAssets=p=>p.assets.filter(a=>a.kind!=="trap");
+const MISSIONS=[
+  MS("pay","First paycheck","Collect your first payday",p=>p.months>=1),
+  MS("fund","Emergency fund","Hold cash worth 3 months of expenses",p=>p.cash>=3*totalExp(p)),
+  MS("first","First investment","Buy your first asset",p=>realAssets(p).length>=1),
+  MS("dodge","Scam spotter","Say no to a too-good-to-be-true offer",p=>(p.dodged||0)>=1),
+  MS("give","Giver","Donate to charity",p=>!!p.gave),
+  MS("cc","Card killer","Pay off your credit cards",p=>!p.loans.some(l=>l.key==="cc")),
+  MS("rent","Landlord","Own a rental property",p=>p.assets.some(a=>a.kind==="re")),
+  MS("biz","Business owner","Own a business",p=>p.assets.some(a=>a.kind==="biz")),
+  MS("mkt","Market player","Own stocks, crypto or gold",p=>p.assets.some(a=>a.kind==="stock"||a.kind==="gold")),
+  MS("p500","Side income","Earn $500 a month in passive income",p=>passive(p)>=500),
+  MS("three","Portfolio","Own 3 or more assets at once",p=>realAssets(p).length>=3),
+  MS("half","Halfway free","Passive income covers half your expenses",p=>fast(p)||passive(p)>=totalExp(p)/2),
+  MS("p2k","Money machine","Earn $2,000 a month in passive income",p=>fast(p)||passive(p)>=2000),
+  MS("clean","Debt free","Clear all bad debt",p=>badDebt(p)===0),
+  MS("nw100","Six figures","Reach $100,000 net worth",p=>netWorth(p)>=1e5),
+  MS("free","Out of the Rat Race","Passive income beats your expenses",p=>fast(p)),
+  MS("ftbiz","Big leagues","Buy a Fast Track business",p=>(p.ftBiz||[]).length>=1),
+  MS("nw1m","Millionaire","Reach $1,000,000 net worth",p=>netWorth(p)>=1e6),
+  MS("dream","Dream come true","Buy your Dream",p=>!!p.won),
+];
+// a new look comes from missions OR from cash on hand, whichever is first; it never goes back down
+const LV_M=[0,3,6,10,13,16,19],LV_C=[0,25000,75000,200000,500000,1500000,5000000];
+const JOBIMG=new Set("0_0 0_1 0_2 0_3 0_4 0_5 0_6 0_7 0_8 0_9 0_10 0_11 0_12 0_13 0_14 1_0 1_1 1_2 1_3 1_4 1_5 1_6 1_7 1_8 1_9 1_10 1_11 1_12 1_13 1_14 2_0 2_1 2_2 2_3 2_4 2_5 2_6 2_7 2_8 2_9 2_10 2_11 2_12 2_13 2_14 3_0 3_1 3_2 3_3 3_4 3_5 3_6 3_7 3_8 3_9 3_10 3_11 3_12 3_13 3_14".split(" ")); // work-uniform sprites that exist: <hero>_<profession index>
+const heroImg=(k,l,p)=>{const j=p&&`${k%4}_${Math.max(0,PROFS.findIndex(x=>x.name===p.prof))}`;
+  return l<=1&&j&&JOBIMG.has(j)?`img/job${j}.webp`:`img/hero${k%4}_${l<=1?1:Math.min(5,l)}.webp`;};
+const lookOf=p=>Math.min(p.look??1,p.lvl||1,5);
+const LOOKS=["","Work uniform","Smart casual","Business","Executive","Tycoon"];
+function setLook(p,look){
+  if(!ONLINE||isActor()){p.look=look;save();render();return;}
+  NET.db.doc(`rooms/${ONLINE.code}/intents/${NET.uid}`).set({uid:NET.uid,kind:"look",look,n:Date.now()}).catch(e=>toast(errMsg(e)));
+  p.look=look;render(); // shows at once here; the acting device makes it official
+}
+function progress(p){
+  const done=p.done||(p.done=[]);
+  MISSIONS.forEach(m=>{if(!done.includes(m.id)&&m.ok(p)){done.push(m.id);log(`${p.name} completed a mission: ${m.name}`,p.id);}});
+  let l=1;LV_M.forEach((n,i)=>{if(done.length>=n||p.cash>=LV_C[i])l=i+1;});
+  p.lvl=Math.max(p.lvl||1,l);
+  if(p.bot)p.look=Math.min(5,p.lvl);
+}
+let misOpen=false;
+function heroSec(v){
+  const k=G.players.indexOf(v),l=v.lvl||1,d=(v.done||[]).length,lk=lookOf(v);
+  const wd=canSellFor(v)&&l>1?`<div class="wardrobe" aria-label="Choose your outfit">${Array.from({length:Math.min(5,l)},(_,i)=>i+1).map(n=>
+    `<button class="wd ${n===lk?"on":""}" data-look="${n}" data-pid="${v.id}" aria-pressed="${n===lk}" title="${LOOKS[n]}"><img src="${heroImg(k,n,v)}" alt="${LOOKS[n]}"></button>`).join("")}</div>`:"";
+  return `<div class="lsec"><div class="herocard"><img src="${heroImg(k,lk,v)}" alt="" onerror="this.style.visibility='hidden'"><div style="min-width:0">
+    <div class="muted" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase">Hero level ${l} of 7</div><div class="hl">${TIERS[l-1]}</div>
+    <div class="muted" style="font-size:12px">${l>=7?"Top level reached.":`Next look: ${Math.max(0,LV_M[l]-d)} more missions, or ${fmt(LV_C[l])} cash`}</div></div></div>${wd}
+    <details class="missions" ${misOpen?"open":""} ontoggle="misOpen=this.open"><summary>Missions ${d}/${MISSIONS.length}</summary>${MISSIONS.map(m=>{const ok=(v.done||[]).includes(m.id);
+      return `<div class="mis ${ok?"ok":""}"><i>${ok?"✅":"○"}</i><span><b>${m.name}</b> · ${m.text}</span></div>`;}).join("")}</details></div>`;
+}
+// the people walk cell by cell; spectators see the same walk when a new position arrives
+const heroS={},SLOT=[[.3,.6],[.7,.6],[.3,.92],[.7,.92]];
+function setHero(el,k,pos){
+  const b=el.closest(".board"),c=b?.querySelector(`.cell[data-i="${pos}"]`);if(!c)return;
+  const x=c.offsetLeft+c.offsetWidth*SLOT[k][0],y=c.offsetTop+c.offsetHeight*SLOT[k][1];
+  // face the way the road goes: right along the top, toward you down the right side, left along the bottom, away up the left side
+  const dir="RDLU"[Math.floor(pos/6)%4];
+  el.classList.toggle("flip",dir==="L"||dir==="U");el.classList.toggle("turn",dir==="D"||dir==="U");
+  el.style.left=x+"px";el.style.top=y+"px";
+}
+function placeHeroes(track){
+  const b=document.querySelector(".play .board"),L=b?.querySelector(".heroes");if(!L)return;
+  L.style.setProperty("--bw",b.offsetWidth+"px");
+  G.players.forEach((q,k)=>{
+    if(q.out||(q.track||"rat")!==track)return;
+    const l=q.lvl||1;let s=heroS[k];
+    if(!s||s.track!==track)s=heroS[k]={track,pos:q.pos,lvl:l};
+    s.target=q.pos;
+    const el=document.createElement("div");el.dataset.k=k;el.style.setProperty("--pc",PCOL[k]);
+    el.className=`walker jump l${l}${k===G.turn?" cur":""}${l>s.lvl?" lvlup":""}`;s.lvl=l;if(prefs.fast)el.style.setProperty("--st",".1s");
+    el.innerHTML=`<i class="hsh"></i><div class="hfig"><img src="${heroImg(k,lookOf(q),q)}" alt="${esc(q.name)}" onerror="this.closest('.walker').classList.add('noimg')"></div>`;
+    L.appendChild(el);setHero(el,k,s.pos);void el.offsetWidth;el.classList.remove("jump");
+    const ahead=(s.target-s.pos+24)%24;
+    if(ahead>12){s.pos=s.target;setHero(el,k,s.pos);}
+    else if(ahead&&!s.timer)walkHero(k);
+  });
+}
+function walkHero(k){
+  const s=heroS[k],el=document.querySelector(`.walker[data-k="${k}"]`);
+  if(s.pos===s.target){s.timer=null;return;}
+  s.pos=(s.pos+1)%24;
+  if(el){el.classList.remove("sa","sb");void el.offsetWidth;el.classList.add(s.pos%2?"sa":"sb");setHero(el,k,s.pos);}
+  setTimeout(()=>sfx.step(),prefs.fast?70:140); // the foot lands at the end of the stride
+  s.timer=setTimeout(()=>walkHero(k),prefs.fast?100:195);
+}
+// each device celebrates its own players' level-ups; others get a short note
+const shownLvl={};
+function checkLevelUps(){
+  G.players.forEach((q,k)=>{
+    const l=q.lvl||1;
+    if(shownLvl[k]==null||l<shownLvl[k]){shownLvl[k]=l;return;}
+    if(l===shownLvl[k])return;
+    if(q.bot||(ONLINE&&q.uid!==NET.uid)){shownLvl[k]=l;toast(`⭐ ${q.name} reached hero level ${l}: ${TIERS[l-1]}`);return;}
+    if(!$("#overlay").hidden||G.phase==="moving"||G.phase==="event")return; // wait for the current card to close
+    shownLvl[k]=l;sfx.levelUp();buzz([30,60,30]);
+    const nl=l<=5,wear=lookOf(q);
+    modal({kicker:"Level up",icon:"dream",tone:"var(--gold-lo)",silent:1,title:`${esc(q.name)}: ${TIERS[l-1]}`,
+      body:`<img class="lvlimg" src="${heroImg(k,nl?l:wear,q)}" alt="Your hero's new outfit" onerror="this.remove()"><p>${nl?`A new outfit is unlocked: <b>${LOOKS[l]}</b>. Wear it now, or keep your ${wear<=1?esc(q.prof)+" uniform":"current outfit"}. You can switch any time in Finances.`:`Your hero now shines ${l>6?"diamond":"gold"} on the board.`}</p>${facts([["Hero level",`${l} of 7`],["Missions done",`${(q.done||[]).length} of ${MISSIONS.length}`,"","hl"]])}`,
+      actions:nl?[{label:"Wear the new outfit",primary:1,fn:()=>setLook(q,l)},{label:wear<=1?`Keep my ${q.prof} uniform`:"Keep my current outfit",fn:()=>render()}]
+        :[{label:"Continue",primary:1,fn:()=>render()}]});
+  });
+}
+
 /* ================= modal / toast ================= */
 function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
   const m=$("#modal"),botTurn=isBot()&&bot!=null;
@@ -1308,7 +1482,7 @@ const NAVI={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1
   settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'};
 const NAV={home:"Home",play:"Play",empire:"Empire",guide:"Rules",records:"Records",settings:"Settings"};
 function renderRail(){
-  $("#rail").innerHTML=`<div class="logo" aria-hidden="true">M</div>`+Object.keys(NAV).map(r=>
+  $("#rail").innerHTML=`<div class="logo" aria-hidden="true">R</div>`+Object.keys(NAV).map(r=>
     `<button class="nav ${route===r?"on":""}" data-route="${r}" aria-current="${route===r?"page":"false"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${NAVI[r]}</svg>${NAV[r]}</button>`).join("");
 }
 const thumbHTML=a=>{const s=artStyle(a.img);return `<div class="thumb${s?" has":""}" style="${s}">${svg(KIND_ICON[a.kind]||"opp")}</div>`;};
@@ -1317,14 +1491,13 @@ const stack=(n,step,top="")=>Array.from({length:n},(_,k)=>`<i style="transform:t
 function boardHTML(g,track){
   const cp=g&&g.players[g.turn],ft=track==="fast",cells=ft?FT:CELLS;
   const html=cells.map((t,i)=>{const [r,col]=rc(i),s=SPACE[t],idx=FT_INDEX[i];
-    const own=ft&&g?.ftOwn?.[i];
+    const own=ft?g?.ftOwn?.[i]:undefined;
     const label=ft&&t==="ftbiz"?FT_BIZ[idx].name:ft&&t==="dream"?DREAMS[idx].name:s.name;
     const price=ft&&t==="ftbiz"?`<div class="price">${fmt(FT_BIZ[idx].price)}</div>`:ft&&t==="dream"?`<div class="price">${fmt(DREAMS[idx].price)}</div>`:"";
-    const pawns=g?g.players.map((q,k)=>q.pos===i&&!q.out&&(q.track||"rat")===track?`<div class="pawn ${cp===q&&g.phase==="moving"?"hop":""}" style="--pc:${PCOL[k]};left:${[6,64,6,64][k]}%;top:${[6,6,64,64][k]}%">${stack(3,3)}</div>`:"").join(""):"";
-    return `<div class="cell ${t==="pay"||t==="cfday"?"pay":t}${i%6===0?" corner":""}${own!=null&&own!==undefined?" owned":""}${cp&&cp.pos===i&&(cp.track||"rat")===track?" here":""}" style="grid-row:${r};grid-column:${col};--tc:${s.color};${own!=null?`--owner:${PCOL[own]}`:""}" title="${esc(label)}">${svg(s.icon)}<div class="lbl">${esc(label)}</div>${price}<div class="pawns">${pawns}</div></div>`;}).join("");
+    return `<div data-i="${i}" class="cell ${t==="pay"||t==="cfday"?"pay":t}${i%6===0?" corner":""}${own!=null&&own!==undefined?" owned":""}${cp&&cp.pos===i&&(cp.track||"rat")===track?" here":""}" style="grid-row:${r};grid-column:${col};--tc:${s.color};${own!=null?`--owner:${PCOL[own]}`:""}" title="${esc(label)}">${svg(s.icon)}<div class="lbl">${esc(label)}</div>${price}</div>`;}).join("");
   const center=ft?`<div class="brand">Fast Track</div><div class="ftinfo"><div>Win by buying <b>your Dream</b></div><div>or growing your CASHFLOW Day income by <b>50%</b></div><div style="opacity:.75">No bank loans here. Audits, lawsuits and divorce take your cash.</div></div>`
-    :`<div class="brand">MoneyFlow</div>${Object.entries(DECK_INFO).map(([k,v])=>`<div class="deck" data-deck="${k}" style="--dk:${v.color}">${stack(7,2,`${v.name}<small>${g?g.decks[k].length:DECKS[k].length} cards</small>`)}</div>`).join("")}`;
-  return `<div class="board${ft?" ft":""}">${html}<div class="center">${center}</div></div>`;
+    :`<div class="brand">Risk Road</div>${Object.entries(DECK_INFO).map(([k,v])=>`<div class="deck" data-deck="${k}" style="--dk:${v.color}">${stack(7,2,`${v.name}<small>${g?g.decks[k].length:DECKS[k].length} cards</small>`)}</div>`).join("")}`;
+  return `<div class="board${ft?" ft":""}">${html}<div class="center">${center}</div><div class="heroes"></div></div>`;
 }
 function render(){
   renderRail();
@@ -1335,10 +1508,11 @@ function render(){
   else if(route==="settings")v.innerHTML=settingsHTML();
   else if(route==="empire")v.innerHTML=empireHTML();
   else v.innerHTML=G?playHTML():ONLINE?lobbyHTML():setupHTML();
-  document.title=route==="play"&&G?`${cur().name} · MoneyFlow`:"MoneyFlow";
+  document.title=route==="play"&&G?`${cur().name} · Risk Road`:"Risk Road";
   document.body.classList.toggle("ingame",route==="play"&&!!G);
   if(route==="play"&&G){
     document.querySelectorAll(".cube").forEach((c,i)=>{const [x,y]=FACES[G.dice[i]||1];c.style.transition="none";c.style.transform=`rotateX(${x+360*(spins[i]||0)}deg) rotateY(${y+360*(spins[i]||0)}deg)`;void c.offsetWidth;c.style.transition="";});
+    placeHeroes(cur().track||"rat");checkLevelUps();
     tickBot();
   }
 }
@@ -1346,7 +1520,7 @@ function homeHTML(){
   const s=store.get(STATS,{played:0,wins:[]}),best=s.wins.length?Math.min(...s.wins.map(w=>w.months)):null;
   const n=Object.values(DECKS).reduce((a,d)=>a+d.length,0);
   return `<section class="hero">
-    <div><div class="eyebrow">The board game of financial freedom</div><h1>MoneyFlow</h1><div class="sub">Get out of the rat race.</div>
+    <div><div class="eyebrow">The board game of financial freedom</div><h1>Risk Road</h1><div class="sub">Get out of the rat race.</div>
       <p>Start with a real job, taxes, a mortgage and loans. Draw deals, buy homes and apartment buildings, run businesses, trade stocks. When passive income beats your expenses, you reach the Fast Track. Buy your Dream to win.</p>
       <div class="ctas">${G?`<button class="btn primary big" data-route="play">Continue game</button><button class="btn big" data-go="new">${confirmKey==="abandon"?"Click again to start over":"New game"}</button>`:`<button class="btn primary big" data-route="play">New game</button>`}<button class="btn big" data-route="guide">Rules</button></div></div>
     <div class="preview" aria-hidden="true">${boardHTML(null,"rat")}</div>
@@ -1386,6 +1560,7 @@ function startGame(){
   route="play";save();render();
 }
 function newGame(players){
+  for(const k in heroS)delete heroS[k];for(const k in shownLvl)delete shownLvl[k];
   G={v:3,players,turn:0,phase:"roll",dice:[1],seq:0,rollId:0,rolls:0,prices:Object.fromEntries(Object.entries(TICKERS).map(([k,v])=>[k,v.base])),gold:3600,log:[],msg:null,offer:null,ftOwn:{},dreamBump:{},winner:null,
      seed:(Math.random()*2**31)|0,fate:Object.fromEntries([...STOCK_LIST,...CRYPTO_LIST].map(k=>[k,pick([.45,.7,1,1,1.4,2.2])])),anchorT:Object.fromEntries(LIVE.map(k=>[k,nowTick()])),
      decks:Object.fromEntries(Object.keys(DECKS).map(k=>[k,shuffle([...DECKS[k].keys()])]))};
@@ -1393,7 +1568,7 @@ function newGame(players){
   const s=store.get(STATS,{played:0,wins:[]});s.played++;store.set(STATS,s);
   sfx.coin();
 }
-const cubeHTML=()=>`<div class="cube">${[1,2,3,4,5,6].map(n=>`<div class="f f${n}">${Array.from({length:9},(_,i)=>`<b class="${({1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]})[n].includes(i)?"on":""}"></b>`).join("")}</div>`).join("")}</div>`;
+const cubeHTML=()=>`<div class="die"><div class="cube"><i class="core"></i><i class="core" style="transform:rotateY(90deg)"></i><i class="core" style="transform:rotateX(90deg)"></i>${[1,2,3,4,5,6].map(n=>`<div class="f f${n}">${Array.from({length:9},(_,i)=>`<b class="${({1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]})[n].includes(i)?"on":""}"></b>`).join("")}</div>`).join("")}</div><i class="dsh"></i></div>`;
 function playHTML(){
   const p=cur(),bot=p.bot,ft=fast(p);
   let acts;
@@ -1432,7 +1607,7 @@ function ledgerHTML(v){
   const logHTML=`<div class="lsec"><div class="lt"><span>Events</span><span></span></div><div class="log">${G.log.slice(0,30).map(e=>`<div><span class="d" style="background:${PCOL[e.p]||"var(--muted)"}"></span><span>${esc(e.t)}</span></div>`).join("")||`<div class="empty">No events yet.</div>`}</div></div>`;
   if(fast(v)){
     const pct=Math.max(0,Math.min(100,(v.ftIncome-v.ftBase)/Math.max(1,v.ftTarget-v.ftBase)*100));
-    return `${tabs}<div class="lsec">${head}<div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div><div class="kpi"><div class="k">CASHFLOW Day</div><div class="v pos">+${fmt(v.ftIncome)}</div></div><div class="kpi"><div class="k">Goal</div><div class="v">${fmt(v.ftTarget)}</div></div></div>
+    return `${tabs}${heroSec(v)}<div class="lsec">${head}<div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div><div class="kpi"><div class="k">CASHFLOW Day</div><div class="v pos">+${fmt(v.ftIncome)}</div></div><div class="kpi"><div class="k">Goal</div><div class="v">${fmt(v.ftTarget)}</div></div></div>
       <div class="meter"><div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="cap"><span>New business income</span><span>${fmt(v.ftIncome-v.ftBase)} of ${fmt(v.ftTarget-v.ftBase)}</span></div></div></div>
       <div class="lsec"><div class="lt"><span>Your Dream</span><span>win by buying it</span></div>${row(esc(DREAMS[v.dream].name),fmt(dreamPrice(v)))}${row("Cash needed",fmt(Math.max(0,dreamPrice(v)-v.cash)))}</div>
       <div class="lsec"><div class="lt"><span>Fast Track businesses</span><span></span></div>${(v.ftBiz||[]).map(n=>row(esc(n),"")).join("")||`<div class="empty">None yet. Land on a business space to buy one.</div>`}</div>${logHTML}`;
@@ -1442,7 +1617,7 @@ function ledgerHTML(v){
   const exps=[["Taxes",v.tax],...v.loans.filter(l=>l.payment>0).map(l=>[esc(l.name),l.payment]),["Other expenses",v.other],...(v.children?[[`Children <small>(${v.children} × ${fmt(v.childCost)})</small>`,v.children*v.childCost]]:[])];
   const assets=v.assets.length?v.assets.map(a=>`<div class="asset">${thumbHTML(a)}<div style="min-width:0"><div style="overflow-wrap:anywhere">${esc(a.name)}</div><div class="meta">${a.kind==="stock"?`${a.qty.toLocaleString("en-US")} × ${fmt(livePrice(a.ticker))}`:a.kind==="gold"?`${a.qty} oz × ${fmt(livePrice("GOLD"))}`:a.down?`cost ${fmt(a.cost)} · down ${fmt(a.down)}`:`cost ${fmt(a.cost)}`}</div></div><span class="num" style="font-size:12.5px">${a.income?`+${fmt(a.income)}`:fmt(assetValue(a))}</span><span></span></div>`).join(""):`<div class="empty">No assets yet. Land on Opportunity and draw a deal.</div>`;
   const liab=v.loans.length?v.loans.map(l=>row(esc(l.name),fmt(l.principal))).join(""):`<div class="empty">No debt.</div>`;
-  return `${tabs}<div class="lsec">${head}
+  return `${tabs}${heroSec(v)}<div class="lsec">${head}
     <div class="kpis"><div class="kpi"><div class="k">Cash</div><div class="v">${fmt(v.cash)}</div></div>
       <div class="kpi"><div class="k">Cash flow</div><div class="v ${cf>=0?"pos":"neg"}">${cf>=0?"+":""}${fmt(cf)}</div></div>
       <div class="kpi"><div class="k">Net worth</div><div class="v">${fmt(netWorth(v))}</div></div></div>
@@ -1521,7 +1696,7 @@ function settingsHTML(){
     <div class="switch"><div><b>Sound</b><div class="muted" style="font-size:13px">Dice, coins, cards and wins</div></div>${seg("sound",[[true,"On"],[false,"Off"]])}</div>
     <div class="switch"><div><b>3D board</b><div class="muted" style="font-size:13px">Tilted board with 3D pieces and dice</div></div>${seg("fx",[[true,"On"],[false,"Off"]])}</div>
     <div class="switch"><div><b>Game speed</b><div class="muted" style="font-size:13px">Also speeds up bot turns</div></div>${seg("fast",[[false,"Normal"],[true,"Fast"]])}</div>
-    <div class="switch" style="display:block"><b>Install on your phone</b><div class="muted" style="font-size:13px">Add MoneyFlow to your home screen and it opens full screen like an app.</div>
+    <div class="switch" style="display:block"><b>Install on your phone</b><div class="muted" style="font-size:13px">Add Risk Road to your home screen and it opens full screen like an app.</div>
       <div class="install"><div><b>iPhone</b><ol><li>Open this page's link in Safari.</li><li>Tap the Share button.</li><li>Tap <b>Add to Home Screen</b>.</li></ol></div><div><b>Android</b><ol><li>Open this page's link in Chrome.</li><li>Tap the ⋮ menu.</li><li>Tap <b>Add to Home screen</b>.</li></ol></div></div></div>
     <div class="switch"><button class="btn danger" data-go="resetStats">${confirmKey==="resetStats"?"Click again to clear":"Clear records"}</button>${G?`<button class="btn danger" data-go="abandon">${confirmKey==="abandon"?"Click again to abandon":"Abandon current game"}</button>`:""}</div>
   </div>`;
@@ -1705,6 +1880,7 @@ function onIntents(qs){
   qs.docs.forEach(d=>{const x=d.data();if(!x)return;const key=`${x.uid}:${x.n}`;if(ONLINE.applied.has(key)||(G.applied||[]).includes(key))return;
     ONLINE.applied.add(key);(G.applied=G.applied||[]).push(key);G.applied=G.applied.slice(-40);
     const p=G.players.find(q=>q.uid===x.uid),a=p?.assets.find(y=>y.id===x.assetId);
+    if(p&&x.kind==="look"){p.look=x.look;changed=true;return;}
     if(p&&a&&x.kind==="live"&&(a.kind==="stock"||a.kind==="gold")){sellLive(p,a,true);changed=true;return;}
     if(p&&a&&offerActive()&&G.offer.id===x.offerId&&offerMatch(G.offer,a)){sellOffer(p,a);changed=true;}});
   if(changed){render();save();}
@@ -1783,6 +1959,7 @@ document.addEventListener("click",e=>{
   if(b.dataset.np){syncDraft();draft.n=+b.dataset.np;render();return;}
   if(b.dataset.pref){prefs[b.dataset.pref]=b.dataset.val==="true";savePrefs();render();return;}
   if(b.dataset.view!=null){VIEW=+b.dataset.view;render();return;}
+  if(b.dataset.look){const p=G.players[+b.dataset.pid];if(p&&canSellFor(p))setLook(p,+b.dataset.look);return;}
   if(b.dataset.osell){const p=G.players[+b.dataset.pid],a=p?.assets.find(x=>x.id===b.dataset.osell);if(!a||!offerActive()||!canSellFor(p))return;
     if(ONLINE&&!isActor())return sendIntent(a);
     sellOffer(p,a);save();render();return;}
