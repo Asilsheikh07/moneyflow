@@ -19,7 +19,7 @@
   --good:#34c98a; --bad:#f06552; --blue:#5b9bff; --blue-soft:rgba(91,155,255,.14);
   --paper:#f6efdf; --paper2:#ece2cb; --print:#1d2433; --felt:#123a33; --felt2:#0b2722;
   --c-opp:#1f9a64; --c-mkt:#d39a1c; --c-doo:#d64d72; --c-pay:#0f2d5c; --c-char:#2b9aa9; --c-baby:#4f86e0; --c-down:#6f7787;
-  --p1:#ff6a45; --p2:#4f93ff; --p3:#b27bff; --p4:#36d08c;
+  --p1:#ff6a45; --p2:#4f93ff; --p3:#f5c542; --p4:#36d08c;
   --shadow:0 20px 50px rgba(0,0,0,.55);
   --f-display:"Playfair Display",Georgia,serif;
   --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -369,7 +369,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 .offer{border:1px solid var(--gold-lo);background:linear-gradient(180deg,rgba(214,176,100,.12),rgba(214,176,100,.03));border-radius:14px;padding:12px 14px;margin:0 0 4px}
 .offer b.t{display:block;font-size:13px;color:var(--gold-hi);margin-bottom:4px}
 .offer .asset{grid-template-columns:40px minmax(0,1fr) auto auto}
-.board.ft{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(circle at 50% 42%,#3a2a66 0,#24183f 55%,#140d24 100%)}
+.board.ft{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(circle at 50% 42%,#1d3a5a 0,#10233a 55%,#0b1622 100%)}
 .cell.owned::after{content:"";position:absolute;right:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--owner);box-shadow:0 0 0 2px var(--paper)}
 .cell .price{font-family:var(--f-mono);font-size:clamp(4.5px,.7vw,8.5px);color:var(--print);opacity:.7}
 .ftinfo{grid-column:1/3;grid-row:2/4;display:grid;align-content:center;gap:8px;text-align:center;color:#e9e2ff;font-size:clamp(7px,1.25vw,14px)}
@@ -495,10 +495,10 @@ const SPACE={
   down:{name:"Downsized",icon:"down",color:"var(--c-down)"},
   cfday:{name:"CASHFLOW Day",icon:"pay",color:"#c99a1c"},
   ftbiz:{name:"Business",icon:"big",color:"var(--c-opp)"},
-  dream:{name:"Dream",icon:"dream",color:"#d64d9a"},
-  audit:{name:"Tax audit",icon:"audit",color:"#7b5cd6"},
-  lawsuit:{name:"Lawsuit",icon:"law",color:"#7b5cd6"},
-  divorce:{name:"Divorce",icon:"divorce",color:"#7b5cd6"},
+  dream:{name:"Dream",icon:"dream",color:"#d9a441"},
+  audit:{name:"Tax audit",icon:"audit",color:"#b5483f"},
+  lawsuit:{name:"Lawsuit",icon:"law",color:"#b5483f"},
+  divorce:{name:"Divorce",icon:"divorce",color:"#b5483f"},
 };
 const CELLS=["pay","opp","doodad","opp","market","opp","pay","opp","charity","opp","doodad","opp","pay","opp","market","opp","baby","opp","pay","opp","doodad","opp","down","market"];
 const FT=["cfday","ftbiz","dream","ftbiz","audit","ftbiz","cfday","ftbiz","dream","ftbiz","charity","ftbiz","cfday","ftbiz","dream","ftbiz","lawsuit","ftbiz","cfday","ftbiz","dream","divorce","ftbiz","dream"];
@@ -634,7 +634,7 @@ function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*160
 const BOT_NAMES=["Ava","Leo","Mia","Noah","Zoe","Kai"];
 
 /* photos: drop files into img/<key>.jpg and list the key here; cards fall back to a styled header without one */
-const IMAGES=new Set("atm baby billboard bitcoin carshare carwash charity coffee complex condo container crash daycare dental downsized duplex ethereum fixer foodtruck fund gold gym handshake hotel house21 house32 land laundromat opportunity payday plex12 plex4 plex8 recession roof solar stocks storage tourism tutoring vacancy vending website".split(" "));
+const IMAGES=new Set("atm baby billboard bitcoin carrepair carshare carwash charity coffee complex condo container crash daycare dental dentist downsized duplex ethereum fixer foodtruck fund gold gym handshake homerepair hotel house21 house32 land laptop laundromat lifestyle loan medical opportunity payday phone plex12 plex4 plex8 recession roof solar stocks storage tourism tutoring tv vacancy vacation vending vet website wedding".split(" "));
 const IMG_BY_TITLE={"Condo 2BR/1BA":"condo","House 2BR/1BA":"house21","House 3BR/2BA":"house32","Fixer-upper 3BR/2BA":"fixer","Duplex":"duplex","Vending machines":"vending","Laundromat stake":"laundromat","ATM machine":"atm","Used food truck":"foodtruck","Car-share vehicle":"carshare","Niche website":"website","Billboard lease":"billboard","Storage container":"container","Land, 10 acres":"land","Professional certification":"course","Certificate of deposit":"bank",
   "4-plex":"plex4","8-plex":"plex8","12-unit apartment building":"plex12","24-unit apartment complex":"complex","Car wash":"carwash","Daycare center":"daycare","Coffee franchise":"coffee","Dental clinic":"dental","Gym franchise":"gym","Tutoring center":"tutoring","Self-storage facility":"storage","Boutique hotel":"hotel","Solar farm":"solar",
   "New smartphone":"phone","Friend's wedding":"wedding","Car repair":"carrepair","Dentist":"dentist","Family vacation":"vacation","Washing machine":"washer","Unpaid loan":"loan","Speeding ticket":"ticket","Big-screen TV":"tv","Birthday party":"party","Medical bill":"medical","New laptop":"laptop","Vet bill":"vet","Home repair":"homerepair","Lifestyle creep":"lifestyle","Gym membership":"gymmember"};
@@ -1122,7 +1122,7 @@ function lessonFor(){
 function showLesson(x){
   const seen=store.get("mf.lessons.seen",[]);seen.push(x.id);store.set("mf.lessons.seen",seen.slice(-100));
   sfx.bad();
-  modal({kicker:"💡 Money lesson",icon:"audit",tone:"#5b3fb3",title:`What happened with "${esc(x.title)}"`,silent:1,
+  modal({kicker:"💡 Money lesson",icon:"audit",tone:"#1f7a72",title:`What happened with "${esc(x.title)}"`,silent:1,
     body:`${facts([x.lost>0?["You lost",fmt(-x.lost),"neg","hl"]:["You gained",`+${fmt(-x.lost)}`,"pos","hl"]])}<p style="color:var(--ink);font-size:15px">${esc(x.lesson)}</p>`,actions:[{label:"Lesson learned",primary:1,fn:()=>{}}]});
 }
 function courseModal(p,d){
@@ -1269,7 +1269,7 @@ function handleFast(p){
     case "dream":{
       const dr=DREAMS[idx];
       if(p.dream===idx){const price=dreamPrice(p);
-        return box(dr.name,`<p>This is your Dream. ${dr.text}</p>${facts([["Price",fmt(price)],["Your cash",fmt(p.cash)]])}${p.cash<price?`<div class="why">Not enough cash yet. Keep collecting CASHFLOW Days.</div>`:""}`,"#d64d9a",
+        return box(dr.name,`<p>This is your Dream. ${dr.text}</p>${facts([["Price",fmt(price)],["Your cash",fmt(p.cash)]])}${p.cash<price?`<div class="why">Not enough cash yet. Keep collecting CASHFLOW Days.</div>`:""}`,"#d9a441",
           [{label:"Buy my Dream",primary:1,disabled:p.cash<price,fn:()=>{p.cash-=price;log(`${p.name} bought their Dream: ${dr.name}`);declareWinner(p,`bought their Dream, ${dr.name}`);done();}},{label:"Not yet",fn:done}],()=>p.cash>=price?0:1);}
       const owners=G.players.filter(q=>q.dream===idx&&q!==p);
       if(owners.length){(G.dreamBump=G.dreamBump||{})[idx]=(G.dreamBump[idx]||0)+1;log(`${p.name} landed on ${dr.name}: its price rose 100% for ${owners.map(q=>q.name).join(", ")}`);}
