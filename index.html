@@ -522,16 +522,16 @@ const DOODADS=[
 ];
 const M=o=>()=>({...o,...(o.lo?{price:rand(o.lo,o.hi)*K}:{})});
 /* Trap cards teach financial literacy: each looks tempting, and when it plays out a "Money lesson" explains the red flags. */
-const TRAP=(type,title,text,o)=>()=>({kind:"trap",type,title,text,...o});
+const TRAP=(type,title,text,o)=>()=>({kind:"trap",type,title:typeof title==="function"?title():title,text,...o});
 const TRAPS=[
- TRAP("ponzi","Guaranteed 15% a month","A smooth-talking advisor offers a fund that 'never loses' and pays 15% every month. Your neighbor says he's already been paid twice.",
-  {choose:true,months:2,rate:.15,lesson:"This was a Ponzi scheme. The 'returns' were paid out of new investors' money until the money ran out and the fund vanished. Red flags: guaranteed high returns, no clear business behind them, pressure to invest quickly. 15% a month is over 400% a year; nothing real pays that safely."}),
- TRAP("pump","Hot tip: MoonRocket token","A friend in a chat group swears this new token will 'go 10x by Friday'. A starter bag costs $3,000.",
-  {cost:3000,refund:.08,lesson:"This was a pump-and-dump. The people who hyped the token sold at the top, and the price crashed 92%. Red flags: tips from anonymous chats, promises of 10x, pressure to buy right now. Never invest in something you can't explain in one sentence."}),
- TRAP("course","Trading course + signals","A guru filming in a rented sports car sells a course and daily 'can't-lose' trading signals: $2,500 now plus $150 a month for 6 months.",
-  {cost:2500,fee:150,months:6,lesson:"Most paid trading signals lose money; the seller earns from your fees, not from trading. Red flags: luxury lifestyle marketing, 'can't lose', recurring payments. Free education and a low-cost index fund beat this almost every time."}),
- TRAP("mlm","Friend's MLM business","A friend invites you to 'be your own boss' selling wellness products. Starter kit $1,500, then $100 of inventory every month for 6 months.",
-  {cost:1500,fee:100,months:6,income:30,lesson:"Multi-level marketing: nearly everyone who joins loses money, because you must keep buying inventory and recruiting friends. Red flags: you pay to join, income depends on recruiting, monthly purchase quotas."}),
+ TRAP("ponzi",()=>pick(["Guaranteed 15% a month","SafeYield fund: 15% a month","AI trading bot: 15% a month","Golden Circle club: 15% a month"]),"A smooth-talking advisor offers a fund that 'never loses' and pays 15% every month. Your neighbor says he's already been paid twice.",
+  {choose:true,months:2,rate:.15,luckP:.2,luckRefund:1,lessonLucky:"You pulled your money out just before the fund collapsed. That was luck, not skill: most investors lost everything. A Ponzi pays early investors with new investors' money until it runs out.",lesson:"This was a Ponzi scheme. The 'returns' were paid out of new investors' money until the money ran out and the fund vanished. Red flags: guaranteed high returns, no clear business behind them, pressure to invest quickly. 15% a month is over 400% a year; nothing real pays that safely."}),
+ TRAP("pump",()=>`Hot tip: ${pick(["MoonRocket","ShibaMax","GalaxyCoin","TurboDoge","PepeGold","RocketCat"])} token`,"A friend in a chat group swears this new token will 'go 10x by Friday'. A starter bag costs $3,000.",
+  {cost:3000,refund:.08,luckP:.25,luckRefund:3,lessonLucky:"The token tripled and you sold in time. This time you were lucky, but most people who buy chat-group tips lose money. One win does not make it a good strategy.",lesson:"This was a pump-and-dump. The people who hyped the token sold at the top, and the price crashed 92%. Red flags: tips from anonymous chats, promises of 10x, pressure to buy right now. Never invest in something you can't explain in one sentence."}),
+ TRAP("course",()=>pick(["Trading course + signals","Crypto mentorship club","Forex robot subscription","Millionaire mindset bootcamp"]),"A guru filming in a rented sports car sells a course and daily 'can't-lose' trading signals: $2,500 now plus $150 a month for 6 months.",
+  {cost:2500,fee:150,months:6,luckP:.2,luckRaise:.05,lessonLucky:"You picked up a few useful skills and got a 5% raise. Still, the fees cost more than most people ever earn back from courses like this.",lesson:"Most paid trading signals lose money; the seller earns from your fees, not from trading. Red flags: luxury lifestyle marketing, 'can't lose', recurring payments. Free education and a low-cost index fund beat this almost every time."}),
+ TRAP("mlm",()=>pick(["Friend's MLM business","Wellness 'business opportunity'","Be-your-own-boss starter kit","Crypto-cosmetics network"]),"A friend invites you to 'be your own boss' selling wellness products. Starter kit $1,500, then $100 of inventory every month for 6 months.",
+  {cost:1500,fee:100,months:6,income:30,luckP:.15,luckRefund:1,lessonLucky:"You broke even, which is better than most. Nearly everyone else in the scheme lost money.",lesson:"Multi-level marketing: nearly everyone who joins loses money, because you must keep buying inventory and recruiting friends. Red flags: you pay to join, income depends on recruiting, monthly purchase quotas."}),
 ];
 SMALL.push(
   DEAL("re","condo",1,"Luxury condo downtown","A brand-new tower with a rooftop pool. The agent says prices here 'only go up'.",260000,52000,-180,2100),
@@ -539,7 +539,7 @@ SMALL.push(
 BIG.push(DEAL("biz","bigbiz",0,"Trendy restaurant","A celebrity chef wants a partner. It was packed on opening night.",350000,52000,-250,0,"SBA loan"));
 SMALL.push(...TRAPS,()=>stockCard("TMIX"),()=>stockCard("TMIX"),()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>stockCard());
 const MARKET=[
- ()=>({kind:"hype",up:true}),()=>({kind:"hype",up:false}),
+ ()=>({kind:"hype",up:true}),()=>({kind:"hype",up:false}),()=>({kind:"rates",up:true}),()=>({kind:"rates",up:true}),()=>({kind:"rates",up:false}),
  M({kind:"buyer",type:"sub",sub:"condo",lo:80,hi:110,title:"Condo buyer",text:"A first-time buyer wants a 2BR/1BA condo and has a pre-approved mortgage."}),
  M({kind:"buyer",type:"sub",sub:"house21",lo:100,hi:140,title:"Buyer for a 2BR/1BA house",text:"A young couple is looking for a starter home."}),
  M({kind:"buyer",type:"sub",sub:"house32",lo:130,hi:190,title:"Buyer for a 3BR/2BA house",text:"A relocating family needs a house before school starts."}),
@@ -563,8 +563,8 @@ const TICKERS={NOVA:{name:"Novatek Robotics",base:20},GRNR:{name:"GreenRiver Ene
   BTC:{name:"Bitcoin",base:65000,crypto:1},ETH:{name:"Ethereum",base:3200,crypto:1},SOL:{name:"Solana",base:150,crypto:1},DOGE:{name:"Dogecoin",base:.15,crypto:1},TMIX:{name:"Total Market Index Fund",base:100,div:.25}};
 const STOCK_LIST=["NOVA","GRNR","BLUC","MEDX","AERO","CHIP","VOLT","PHRM","FOOD","PLAY"],CRYPTO_LIST=["BTC","ETH","SOL","DOGE"];
 function stockCard(tk){tk=tk||pick(STOCK_LIST);const u=Math.random(),r=tk==="DIVY"||tk==="TMIX"?.9+Math.random()*.2:u<.3?.08+Math.random()*.32:u<.7?.6+Math.random()*.8:1.6+Math.random()*1.4;
-  return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(TICKERS[tk].base*r*2)/2),ratio:r};}
-function cryptoCard(){const tk=pick(CRYPTO_LIST),r=.3+Math.random()*1.9,v=TICKERS[tk].base*r;return {kind:"stock",ticker:tk,price:v<20?Math.round(v*100)/100:Math.round(v),ratio:r};}
+  return {kind:"stock",ticker:tk,price:Math.max(1,Math.round(baseOf(tk)*r*2)/2),ratio:r};}
+function cryptoCard(){const tk=pick(CRYPTO_LIST),r=.3+Math.random()*1.9,v=baseOf(tk)*r;return {kind:"stock",ticker:tk,price:v<20?Math.round(v*100)/100:Math.round(v),ratio:r};}
 function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*1600)/10)*10};}
 const BOT_NAMES=["Ava","Leo","Mia","Noah","Zoe","Kai"];
 
@@ -715,9 +715,9 @@ function trackPrice(){} // price history now comes from the live market below
    toward each asset's usual price. Every device computes the same path from the game's seed and the clock, so online
    players see identical prices without sending any data. Cards and market events set a new anchor price. */
 const TICK_MS=4000, LIVE=["TMIX",...STOCK_LIST,"DIVY",...CRYPTO_LIST,"GOLD"];
-const VOL={TMIX:.005,NOVA:.022,GRNR:.014,BLUC:.03,MEDX:.02,AERO:.026,CHIP:.028,VOLT:.034,PHRM:.02,FOOD:.009,PLAY:.03,DIVY:.004,BTC:.035,ETH:.045,SOL:.05,DOGE:.065,GOLD:.006};
+const VOL={TMIX:.005,NOVA:.022,GRNR:.02,BLUC:.03,MEDX:.022,AERO:.026,CHIP:.028,VOLT:.034,PHRM:.022,FOOD:.018,PLAY:.03,DIVY:.004,BTC:.035,ETH:.045,SOL:.05,DOGE:.065,GOLD:.006};
 const JUMP={TMIX:.03,NOVA:.18,GRNR:.12,BLUC:.25,MEDX:.2,AERO:.2,CHIP:.22,VOLT:.3,PHRM:.28,FOOD:.07,PLAY:.25,DIVY:.03,BTC:.28,ETH:.32,SOL:.35,DOGE:.45,GOLD:.06};
-const baseOf=tk=>tk==="GOLD"?3600:TICKERS[tk].base;
+const baseOf=tk=>(tk==="GOLD"?3600:TICKERS[tk].base)*(G?.fate?.[tk]||1); // hidden per-game fate: where this company's price is heading
 const nowTick=()=>Math.floor(Date.now()/TICK_MS);
 function rng(seed,t,tk){let h=(seed^Math.imul(t,0x9E3779B1)^Math.imul(tk.charCodeAt(0)*31+tk.charCodeAt(1)*7+tk.charCodeAt(2),0x85EBCA6B))>>>0;
   return ()=>{h=(h+0x6D2B79F5)>>>0;let x=h;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return ((x^(x>>>14))>>>0)/4294967296;};}
@@ -1029,7 +1029,8 @@ function trapModal(p,d){
         const c=d.choose?Math.floor(+$("#qty").value/1000)*1000:d.cost;
         if(!(c>0))return toast("Enter an amount");if(c>p.cash)return toast("Not enough cash");
         p.cash-=c;
-        p.assets.push({id:uid(),kind:"trap",type:d.type,name:d.title,cost:c,income:d.choose?Math.round(c*d.rate):(d.income||0),trapLeft:d.choose?d.months:1,refund:d.refund||0,lesson:d.lesson,img:""});
+        const luck=Math.random()<(d.luckP||0);
+        p.assets.push({id:uid(),kind:"trap",type:d.type,name:d.title,cost:c,income:d.choose?Math.round(c*d.rate):(d.income||0),trapLeft:d.choose?rand(1,4):1,refund:luck?(d.luckRefund??d.refund??0):(d.refund||0),raise:luck?d.luckRaise||0:0,lesson:luck?d.lessonLucky:d.lesson,lucky:luck,img:""});
         if(d.fee)p.loans.push({id:uid(),name:`Contract: ${d.title}`,principal:0,payment:d.fee,kind:"sub",monthsLeft:d.months});
         log(`${p.name} put ${fmt(c)} into "${d.title}"`);sfx.coin();done();}},
       {label:"No thanks",fn:done}],
@@ -1039,7 +1040,8 @@ function trapModal(p,d){
 function processTraps(p){
   for(const a of [...p.assets])if(a.kind==="trap"&&--a.trapLeft<=0){
     p.assets=p.assets.filter(x=>x!==a);const back=Math.round(a.cost*(a.refund||0));p.cash+=back;
-    log(`${p.name}: "${a.name}" collapsed (lost ${fmt(a.cost-back)})`,p.id);
+    if(a.raise){const r=Math.round(p.salary*a.raise);p.salary+=r;p.tax+=Math.round(r*.25);}
+    log(a.lucky?`${p.name}: got lucky with "${a.name}"`:`${p.name}: "${a.name}" collapsed (lost ${fmt(a.cost-back)})`,p.id);
     (G.lessons=G.lessons||[]).push({id:uid(),pid:p.id,title:a.name,lesson:a.lesson,lost:a.cost-back});G.lessons=G.lessons.slice(-20);
   }
   for(const l of [...p.loans])if(l.kind==="sub"&&--l.monthsLeft<=0){p.loans=p.loans.filter(x=>x!==l);log(`${p.name}: ${l.name} ended`,p.id);}
@@ -1053,7 +1055,7 @@ function showLesson(x){
   const seen=store.get("mf.lessons.seen",[]);seen.push(x.id);store.set("mf.lessons.seen",seen.slice(-100));
   sfx.bad();
   modal({kicker:"💡 Money lesson",icon:"audit",tone:"#5b3fb3",title:`What happened with "${esc(x.title)}"`,silent:1,
-    body:`${facts([["You lost",fmt(-x.lost),"neg","hl"]])}<p style="color:var(--ink);font-size:15px">${esc(x.lesson)}</p>`,actions:[{label:"Lesson learned",primary:1,fn:()=>{}}]});
+    body:`${facts([x.lost>0?["You lost",fmt(-x.lost),"neg","hl"]:["You gained",`+${fmt(-x.lost)}`,"pos","hl"]])}<p style="color:var(--ink);font-size:15px">${esc(x.lesson)}</p>`,actions:[{label:"Lesson learned",primary:1,fn:()=>{}}]});
 }
 function courseModal(p,d){
   const dk=DECK_INFO.small,rise=Math.round(p.salary*.1),taxUp=Math.round(rise*.25);
@@ -1133,13 +1135,20 @@ function marketCard(p,d){
       const a=pick(rs),c=1000+a.units*300,note=mustPay(p,c);log(`${p.name}: roof repair on ${a.name} −${fmt(c)}`);sfx.bad();return modal({kicker:mk.name,icon:mk.icon,tone:"var(--bad)",title:d.title,body:`<p>${esc(a.name)} needs roof work: −${fmt(c)}.</p>${note}`,actions:[{label:"Continue",primary:1,fn:done}],bot:0});}
     case "bizshift":{const bs=own(a=>a.kind==="biz"&&a.income>0);if(!bs.length)return show(d.title,`${d.text} You don't own a business, so nothing changes.`);
       const a=pick(bs);a.income=Math.round(a.income*d.mult);log(`${p.name}: ${a.name} cash flow ${d.mult>1?"+":"−"}10%`);return show(d.title,`${d.text} ${esc(a.name)} now brings ${d.mult>1?"10% more":"10% less"} cash flow, for good.`,d.mult>1?"var(--good)":"var(--bad)");}
-    case "split":{const tk=pick(["NOVA","GRNR","MEDX"]);G.prices[tk]/=2;trackPrice(tk,G.prices[tk]);G.players.forEach(q=>q.assets.forEach(a=>{if(a.ticker===tk)a.qty*=2;}));log(`${tk} split 2-for-1.`);
+    case "split":{const tk=pick(STOCK_LIST);G.prices[tk]/=2;trackPrice(tk,G.prices[tk]);G.players.forEach(q=>q.assets.forEach(a=>{if(a.ticker===tk)a.qty*=2;}));log(`${tk} split 2-for-1.`);
       return show(`${TICKERS[tk].name} splits 2-for-1`,`Every share becomes two at half the price, for every player. Holdings keep the same value.`);}
-    case "crash": G.prices.BLUC=1;trackPrice("BLUC",1);log("BlueCart Retail collapsed to $1.");return show("BlueCart Retail scandal","Accounting fraud was uncovered. BLUC shares crash to $1 for every player.","var(--bad)");
+    case "crash":{const tk=pick(STOCK_LIST);G.prices[tk]=Math.max(1,Math.round(baseOf(tk)*.08*2)/2);log(`${tkName(tk)} collapsed to ${fmt(G.prices[tk])}.`);
+      return show(`${tkName(tk)} scandal`,`Accounting fraud was uncovered at ${tkName(tk)} (${tk}). Shares crash to ${fmt(G.prices[tk])} for every player. 💡 Owning many companies instead of one protects you from a single disaster.`,"var(--bad)");}
     case "goldup": G.gold=Math.round(G.gold*1.15);trackPrice("GOLD",G.gold);log("Gold rose 15%.");return show("Currency slump","The dollar weakened and gold jumped 15%.");
     case "hype":{const tk=pick(STOCK_LIST),k=d.up?1.5:.65;G.prices[tk]=Math.round(G.prices[tk]*k*100)/100;log(`${tkName(tk)} ${d.up?"jumped 50% on social media hype":"fell 35% in a panic"}.`);
       return show(d.up?`${tkName(tk)} goes viral`:`Panic selling in ${tkName(tk)}`,d.up?`Everyone online is talking about ${tkName(tk)} (${tk}). The price jumped 50% in an hour and people are piling in. Is it worth more today than yesterday?`
         :`A scary headline hit ${tkName(tk)} (${tk}) and people are dumping shares. The price fell 35% in an hour. Did the company really lose a third of its value?`,d.up?"var(--good)":"var(--bad)");}
+    case "rates":{const hit=[];
+      G.players.forEach(q=>q.assets.forEach(a=>{const l=mortOf(q,a);if(!l||!(a.kind==="re"||a.kind==="biz"))return;
+        const ch=Math.max(10,Math.round((l.dti||l.principal*.007)*(d.up?.15:.12)));a.income+=d.up?-ch:ch;hit.push(`${q.name}: ${a.name} ${d.up?"−":"+"}${fmt(ch)}/mo`);}));
+      log(d.up?"Interest rates jumped: loan-financed properties earn less.":"Interest rates fell: loan payments got cheaper.");
+      return show(d.up?"Interest rates jump":"Interest rates fall",(d.up?"The central bank raised rates. Payments on adjustable mortgages and business loans went up for every player. Anything bought with cash is not affected.":"Rates dropped and everyone with a loan refinanced to a cheaper payment.")
+        +(hit.length?`<br><br>${hit.map(esc).join("<br>")}`:" Nobody has loans right now, so nothing changes.")+"<br><br>💡 Loans multiply both gains and losses.",d.up?"var(--bad)":"var(--good)");}
     case "cryptocrash": ["BTC","ETH"].forEach(t=>{G.prices[t]=Math.round(G.prices[t]*.55);trackPrice(t,G.prices[t]);});log("Crypto crashed 45%.");
       return show("Crypto crash","A major exchange collapsed. Bitcoin and Ethereum fall 45% overnight.","var(--bad)");
   }
@@ -1365,7 +1374,7 @@ function startGame(){
 }
 function newGame(players){
   G={v:3,players,turn:0,phase:"roll",dice:[1],seq:0,rollId:0,rolls:0,prices:Object.fromEntries(Object.entries(TICKERS).map(([k,v])=>[k,v.base])),gold:3600,log:[],msg:null,offer:null,ftOwn:{},dreamBump:{},winner:null,
-     seed:(Math.random()*2**31)|0,anchorT:Object.fromEntries(LIVE.map(k=>[k,nowTick()])),
+     seed:(Math.random()*2**31)|0,fate:Object.fromEntries([...STOCK_LIST,...CRYPTO_LIST].map(k=>[k,pick([.45,.7,1,1,1.4,2.2])])),anchorT:Object.fromEntries(LIVE.map(k=>[k,nowTick()])),
      decks:Object.fromEntries(Object.keys(DECKS).map(k=>[k,shuffle([...DECKS[k].keys()])]))};
   players.forEach(p=>log(`${p.name}${p.bot?" (bot)":""} starts as ${/^[aeiou]/i.test(p.prof)?"an":"a"} ${p.prof.toLowerCase()} with ${fmt(p.cash)}. Dream: ${DREAMS[p.dream].name}.`,p.id));
   const s=store.get(STATS,{played:0,wins:[]});s.played++;store.set(STATS,s);
