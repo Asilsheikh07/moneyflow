@@ -374,8 +374,8 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 .mkrow{display:grid;grid-template-columns:40px minmax(0,1fr) auto 64px!important;cursor:pointer}
 .mkrow:hover{background:var(--surface2)!important}
 /* additions for the rulebook version: 5-column setup rows, open-offer box, fast-track board */
-.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,.6fr) minmax(0,1fr) minmax(0,1fr)}
-@media (max-width:640px){.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,1fr)}.prow .job,.prow .drm{grid-column:2/4}}
+.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,.6fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:640px){.prow{grid-template-columns:16px minmax(0,1fr) minmax(0,1fr)}.prow .job,.prow .drm,.prow .hro{grid-column:2/4}}
 .offer{border:1px solid var(--gold-lo);background:linear-gradient(180deg,rgba(214,176,100,.12),rgba(214,176,100,.03));border-radius:14px;padding:12px 14px;margin:0 0 4px}
 .offer b.t{display:block;font-size:13px;color:var(--gold-hi);margin-bottom:4px}
 .offer .asset{grid-template-columns:40px minmax(0,1fr) auto auto}
@@ -1432,8 +1432,11 @@ const MISSIONS=[
 // a new look comes from missions OR from cash on hand, whichever is first; it never goes back down
 const LV_M=[0,3,6,10,13,16,19],LV_C=[0,25000,75000,200000,500000,1500000,5000000];
 const JOBIMG=new Set("0_0 0_1 0_2 0_3 0_4 0_5 0_6 0_7 0_8 0_9 0_10 0_11 0_12 0_13 0_14 1_0 1_1 1_2 1_3 1_4 1_5 1_6 1_7 1_8 1_9 1_10 1_11 1_12 1_13 1_14 2_0 2_1 2_2 2_3 2_4 2_5 2_6 2_7 2_8 2_9 2_10 2_11 2_12 2_13 2_14 3_0 3_1 3_2 3_3 3_4 3_5 3_6 3_7 3_8 3_9 3_10 3_11 3_12 3_13 3_14".split(" ")); // work-uniform sprites that exist: <hero>_<profession index>
-const heroImg=(k,l,p)=>{const j=p&&`${k%4}_${Math.max(0,PROFS.findIndex(x=>x.name===p.prof))}`;
-  return l<=1&&j&&JOBIMG.has(j)?`img/job${j}.webp`:`img/hero${k%4}_${l<=1?1:Math.min(5,l)}.webp`;};
+const heroImg=(k,l,p)=>{const h=(p?.hero??k)%4,j=p&&`${h}_${Math.max(0,PROFS.findIndex(x=>x.name===p.prof))}`;
+  return l<=1&&j&&JOBIMG.has(j)?`img/job${j}.webp`:`img/hero${h}_${l<=1?1:Math.min(5,l)}.webp`;};
+// each player picks their hero: two men and two women
+const HEROES=["👨 Man","👩 Woman","🧔 Man (beard)","👱‍♀️ Woman (blonde)"];
+const heroOpts=sel=>HEROES.map((n,i)=>`<option value="${i}" ${+sel===i?"selected":""}>${n}</option>`).join("");
 const lookOf=p=>Math.min(p.look??1,p.lvl||1,5);
 const LOOKS=["","Work uniform","Smart casual","Business","Executive","Tycoon"];
 function setLook(p,look){
@@ -1549,7 +1552,7 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
 }
 function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792085808";
+const BUILD="1792085958";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
@@ -1617,7 +1620,7 @@ function homeHTML(){
     <div class="card tile"><div class="eyebrow">This device</div><div class="muted" style="font-size:13px;margin-top:6px">Games started</div><div class="stat">${s.played}</div><div class="muted" style="font-size:13px;margin-top:6px">Wins · fastest</div><div class="stat">${s.wins.length} · ${best===null?"—":yrs(best)}</div></div>
   </div>`;
 }
-let draft={n:3,names:["You",...BOT_NAMES.slice(0,3)],bot:[false,true,true,true],prof:["-1","-1","-1","-1"],dream:["-1","-1","-1","-1"]};
+let draft={n:3,names:["You",...BOT_NAMES.slice(0,3)],bot:[false,true,true,true],prof:["-1","-1","-1","-1"],dream:["-1","-1","-1","-1"],hero:["0","1","2","3"]};
 const dreamOpts=sel=>`<option value="-1">Random Dream</option>`+DREAMS.map((d,i)=>`<option value="${i}" ${sel==i?"selected":""}>${d.name} · ${fmt(d.price)}</option>`).join("");
 function setupHTML(){
   const d=draft,opts=k=>`<option value="-1">Random job</option>`+PROFS.map((p,i)=>`<option value="${i}" ${d.prof[k]==i?"selected":""}>${p.name}</option>`).join("");
@@ -1627,6 +1630,7 @@ function setupHTML(){
      <div class="seg" style="margin:4px 0 16px">${[1,2,3,4].map(n=>`<button data-np="${n}" class="${n===d.n?"on":""}" aria-pressed="${n===d.n}">${n}</button>`).join("")}</div>
      ${Array.from({length:d.n},(_,k)=>`<div class="prow"><span class="dot" style="background:${PCOL[k]}"></span><input class="field" id="pn${k}" value="${esc(d.names[k])}" maxlength="14" aria-label="Player ${k+1} name">
        <select class="field" id="pt${k}" aria-label="Player ${k+1} type"><option value="h" ${d.bot[k]?"":"selected"}>Human</option><option value="b" ${d.bot[k]?"selected":""}>Bot</option></select>
+       <select class="field hro" id="ph${k}" aria-label="Player ${k+1} hero">${heroOpts(d.hero[k])}</select>
        <select class="field job" id="pp${k}" aria-label="Player ${k+1} job">${opts(k)}</select>
        <select class="field drm" id="pd${k}" aria-label="Player ${k+1} Dream">${dreamOpts(d.dream[k])}</select></div>`).join("")}
      <p class="note">Humans share this device and take turns. Bots play their own turns. Your Dream waits for you on the Fast Track.</p>
@@ -1636,10 +1640,10 @@ function setupHTML(){
 const jobsTable=()=>`<div class="tbl"><table class="ptable"><thead><tr><th>Job</th><th>Salary</th><th>Expenses</th><th>Cash flow</th><th>Start cash</th></tr></thead><tbody>
   ${PROFS.map(p=>{const q=newPlayer("",p,0,false,0);return `<tr><td>${p.name}</td><td class="num">${fmt(p.salary)}</td><td class="num">${fmt(totalExp(q))}</td><td class="num pos">+${fmt(cashflow(q))}</td><td class="num">${fmt(q.cash)}</td></tr>`}).join("")}
   </tbody></table></div><p class="note">Monthly figures. Start cash is savings plus one month of cash flow. Companies and tickers are fictional. This game is not financial advice.</p>`;
-function syncDraft(){for(let k=0;k<draft.n;k++){const n=$("#pn"+k),p=$("#pp"+k),ty=$("#pt"+k),dr=$("#pd"+k);if(n)draft.names[k]=n.value;if(p)draft.prof[k]=p.value;if(ty)draft.bot[k]=ty.value==="b";if(dr)draft.dream[k]=dr.value;}}
+function syncDraft(){for(let k=0;k<draft.n;k++){const n=$("#pn"+k),p=$("#pp"+k),ty=$("#pt"+k),dr=$("#pd"+k),h=$("#ph"+k);if(h)draft.hero[k]=h.value;if(n)draft.names[k]=n.value;if(p)draft.prof[k]=p.value;if(ty)draft.bot[k]=ty.value==="b";if(dr)draft.dream[k]=dr.value;}}
 function startGame(){
   syncDraft();
-  const players=Array.from({length:draft.n},(_,k)=>{const pi=draft.prof[k]==="-1"?rand(0,PROFS.length-1):+draft.prof[k];return newPlayer(draft.names[k].trim()||`P${k+1}`,PROFS[pi],k,draft.bot[k],draft.dream[k]==="-1"?undefined:+draft.dream[k]);});
+  const players=Array.from({length:draft.n},(_,k)=>{const pi=draft.prof[k]==="-1"?rand(0,PROFS.length-1):+draft.prof[k];const p=newPlayer(draft.names[k].trim()||`P${k+1}`,PROFS[pi],k,draft.bot[k],draft.dream[k]==="-1"?undefined:+draft.dream[k]);p.hero=+(draft.hero[k]??k);return p;});
   const human=players.findIndex(p=>!p.bot);
   newGame(players);VIEW=human<0?0:human;
   route="play";save();render();
@@ -1989,7 +1993,7 @@ async function editSeats(fn){
 async function startOnline(){
   const r=ONLINE.room;
   if(r.seats.length<2)return toast("Wait for a friend to join, or add a bot");
-  const players=r.seats.map((s,k)=>{const pi=s.prof==="-1"?rand(0,PROFS.length-1):+s.prof;const p=newPlayer(s.name,PROFS[pi],k,s.bot,s.dream==="-1"||s.dream==null?undefined:+s.dream);p.uid=s.uid||null;return p;});
+  const players=r.seats.map((s,k)=>{const pi=s.prof==="-1"?rand(0,PROFS.length-1):+s.prof;const p=newPlayer(s.name,PROFS[pi],k,s.bot,s.dream==="-1"||s.dream==null?undefined:+s.dream);p.uid=s.uid||null;p.hero=+(s.hero??k%4);return p;});
   newGame(players);VIEW=players.findIndex(p=>p.uid===NET.uid);G.seq=1;
   // status and game go out in one write, so no player ever sees "playing" without a game
   try{await ONLINE.ref.update({status:"playing",gameJson:JSON.stringify(G)});}catch(e){return toast(errMsg(e));}
@@ -2015,9 +2019,10 @@ function lobbyHTML(){
     return `<div class="prow"><span class="dot" style="background:${PCOL[k]}"></span>
       <div style="min-width:0"><b>${esc(s.name)}</b> ${me?'<span class="muted">(you)</span>':""}${s.uid===r.host?' <span class="muted">· host</span>':""}${s.bot?' <span class="muted">· bot</span>':""}</div>
       ${host&&!me?`<button class="btn sm" data-kick="${k}" aria-label="Remove ${esc(s.name)}">Remove</button>`:"<span></span>"}
-      ${edit?`<select class="field job" data-seatjob="${k}" aria-label="Job for ${esc(s.name)}"><option value="-1">Random job</option>${PROFS.map((p,i)=>`<option value="${i}" ${s.prof==i?"selected":""}>${p.name}</option>`).join("")}</select>
+      ${edit?`<select class="field hro" data-seathero="${k}" aria-label="Hero for ${esc(s.name)}">${heroOpts(s.hero??k%4)}</select>
+        <select class="field job" data-seatjob="${k}" aria-label="Job for ${esc(s.name)}"><option value="-1">Random job</option>${PROFS.map((p,i)=>`<option value="${i}" ${s.prof==i?"selected":""}>${p.name}</option>`).join("")}</select>
         <select class="field drm" data-seatdream="${k}" aria-label="Dream for ${esc(s.name)}">${dreamOpts(s.dream??"-1")}</select>`
-        :`<span class="muted job">${s.prof==="-1"?"Random job":PROFS[+s.prof].name}</span><span class="muted drm">${s.dream==null||s.dream==="-1"?"Random Dream":DREAMS[+s.dream].name}</span>`}</div>`;}).join("");
+        :`<span class="muted hro">${HEROES[+(s.hero??k%4)]}</span><span class="muted job">${s.prof==="-1"?"Random job":PROFS[+s.prof].name}</span><span class="muted drm">${s.dream==null||s.dream==="-1"?"Random Dream":DREAMS[+s.dream].name}</span>`}</div>`;}).join("");
   return `<div class="setup"><section class="card"><div class="eyebrow">Online room</div>
     <div class="inl" style="margin:6px 0 4px"><h2 style="font-size:52px;letter-spacing:.14em;color:var(--gold-hi)" class="num">${ONLINE.code}</h2><button class="btn sm" data-go="copycode">Copy code</button></div>
     <p class="muted" style="margin:0 0 16px">Friends open this page, tap <b>Play</b>, enter this code and tap <b>Join room</b>.</p>
@@ -2027,8 +2032,8 @@ function lobbyHTML(){
     <section class="card"><h2 style="font-size:22px;margin-bottom:10px">Jobs</h2>${jobsTable()}</section></div>`;
 }
 document.addEventListener("change",e=>{
-  const s=e.target.closest("select[data-seatjob],select[data-seatdream]");if(!s||!ONLINE)return;
-  const k=+(s.dataset.seatjob??s.dataset.seatdream),key=s.dataset.seatjob!=null?"prof":"dream",v=s.value;
+  const s=e.target.closest("select[data-seatjob],select[data-seatdream],select[data-seathero]");if(!s||!ONLINE)return;
+  const k=+(s.dataset.seatjob??s.dataset.seatdream??s.dataset.seathero),key=s.dataset.seatjob!=null?"prof":s.dataset.seathero!=null?"hero":"dream",v=s.value;
   editSeats(seats=>seats.map((x,i)=>i===k?{...x,[key]:v}:x));
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="ocode")$('[data-go="join"]')?.click();});
