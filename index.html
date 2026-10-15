@@ -126,6 +126,10 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 .cell.corner .lbl{font-size:clamp(6.5px,1vw,12px)}
 .cell.pay{background:linear-gradient(150deg,#163a72,var(--navy2));box-shadow:inset 0 0 0 1px var(--gold),inset 0 0 0 4px var(--navy2),inset 0 0 0 5px rgba(241,216,152,.5),0 2px 0 rgba(0,0,0,.45)}
 .cell.pay svg,.cell.pay .lbl{color:var(--gold-hi);opacity:1}
+/* squares: a calm tile in the square's own colour, big white icon and its name */
+.cell.ph{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(0,0,0,.22)),var(--tc);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.45),0 4px 8px rgba(0,0,0,.25)}
+.cell.ph svg{color:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.cell.ph .lbl,.cell.ph .price{color:#fff;opacity:1;text-shadow:0 1px 1px rgba(0,0,0,.35)}
 .cell.here{box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),inset 0 3px 0 var(--tc),0 0 0 3px var(--gold-hi),0 0 22px rgba(241,216,152,.75)}
 .pawns{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
 .pawn{position:absolute;width:30%;aspect-ratio:1;transform-style:preserve-3d}
@@ -324,8 +328,9 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
   .stage{padding:12px 6px}
   .fx .board{transform:rotateX(26deg);margin-block:-2%;--tilt:26deg}
   .board{gap:3px;padding:9px;border-radius:12px}
-  .cell .lbl{display:none}
-  .cell.corner .lbl{display:block;font-size:6.5px}
+  .cell .lbl{display:block;font-size:5px;letter-spacing:-.04em;white-space:normal;overflow-wrap:normal;max-height:2.2em;overflow:hidden;max-width:110%}
+  .cell.corner .lbl{font-size:6.5px}
+  .cell.ph svg{width:16px;height:16px}
   .cell svg{width:19px;height:19px}
   .cell.corner svg{width:24px;height:24px}
   .deck i:last-child{font-size:8.5px}
@@ -1544,7 +1549,7 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
 }
 function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792084694";
+const BUILD="1792085808";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
@@ -1574,7 +1579,7 @@ function boardHTML(g,track){
     const own=ft?g?.ftOwn?.[i]:undefined;
     const label=ft&&t==="ftbiz"?FT_BIZ[idx].name:ft&&t==="dream"?DREAMS[idx].name:s.name;
     const price=ft&&t==="ftbiz"?`<div class="price">${fmt(FT_BIZ[idx].price)}</div>`:ft&&t==="dream"?`<div class="price">${fmt(DREAMS[idx].price)}</div>`:"";
-    return `<div data-i="${i}" class="cell ${t==="pay"||t==="cfday"?"pay":t}${i%6===0?" corner":""}${own!=null&&own!==undefined?" owned":""}${cp&&cp.pos===i&&(cp.track||"rat")===track?" here":""}" style="grid-row:${r};grid-column:${col};--tc:${s.color};${own!=null?`--owner:${PCOL[own]}`:""}" title="${esc(label)}">${svg(s.icon)}<div class="lbl">${esc(label)}</div>${price}</div>`;}).join("");
+    return `<div data-i="${i}" class="cell ${t==="pay"||t==="cfday"?"pay":t}${t==="pay"||t==="cfday"?"":" ph"}${i%6===0?" corner":""}${own!=null&&own!==undefined?" owned":""}${cp&&cp.pos===i&&(cp.track||"rat")===track?" here":""}" style="grid-row:${r};grid-column:${col};--tc:${s.color};${own!=null?`--owner:${PCOL[own]}`:""}" title="${esc(label)}">${svg(s.icon)}<div class="lbl">${esc(label)}</div>${price}</div>`;}).join("");
   const center=ft?`<div class="brand">Fast Track</div><div class="ftinfo"><div>Win by buying <b>your Dream</b></div><div>or growing your CASHFLOW Day income by <b>50%</b></div><div style="opacity:.75">No bank loans here. Audits, lawsuits and divorce take your cash.</div></div>`
     :`<div class="brand">Risk Road</div>${Object.entries(DECK_INFO).map(([k,v])=>`<div class="deck" data-deck="${k}" style="--dk:${v.color};--dimg:url(img/${v.img}.jpg)">${stack(7,2,`${v.name}<small>${g?g.decks[k].length:DECKS[k].length} cards</small>`)}</div>`).join("")}`;
   return `<div class="board${ft?" ft":""}">${html}<div class="center">${center}</div><div class="heroes"></div></div>`;
