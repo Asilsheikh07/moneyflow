@@ -718,7 +718,13 @@ const totalExp=p=>p.tax+p.other+p.children*p.childCost+loanPay(p);
 const passive=p=>sum(p.assets.map(a=>a.income||0));
 const cashflow=p=>p.salary+passive(p)-totalExp(p);
 const assetValue=a=>a.kind==="stock"?a.qty*livePrice(a.ticker):a.kind==="gold"?a.qty*livePrice("GOLD"):a.cost;
-const netWorth=p=>p.cash+sum(p.assets.map(assetValue))-sum(p.loans.map(l=>l.principal));
+// the home you live in counts in net worth (about 10% over its mortgage) but earns nothing, so it is not in your assets list
+const profOf=p=>PROFS.find(x=>x.name===p.prof);
+const homeValue=p=>{const m=profOf(p)?.debts.mort;return m?Math.round(m[0]*1.1):0;};
+const netWorth=p=>p.cash+homeValue(p)+sum(p.assets.map(assetValue))-sum(p.loans.map(l=>l.principal));
+// net worth on day one, so growth missions are fair for every job
+const startNW=p=>{const pr=profOf(p);if(!pr)return 0;const d=Object.values(pr.debts);
+  return pr.savings+pr.salary-pr.tax-pr.other-sum(d.map(x=>x[1]))+homeValue(p)-sum(d.map(x=>x[0]));};
 const mortOf=(p,a)=>p.loans.find(l=>l.assetId===a.id);
 const dreamPrice=p=>DREAMS[p.dream].price*(1+(G.dreamBump?.[p.dream]||0));
 const monthLabel=p=>`Year ${Math.floor(p.months/12)+1} · Month ${p.months%12+1}`;
@@ -1423,7 +1429,7 @@ const MISSIONS=[
   MS("half","Halfway free","Passive income covers half your expenses",p=>fast(p)||passive(p)>=totalExp(p)/2),
   MS("p2k","Money machine","Earn $2,000 a month in passive income",p=>fast(p)||passive(p)>=2000),
   MS("clean","Debt free","Clear all bad debt",p=>badDebt(p)===0),
-  MS("nw100","Six figures","Reach $100,000 net worth",p=>netWorth(p)>=1e5),
+  MS("nw100","Six figures","Grow your net worth by $100,000",p=>netWorth(p)-startNW(p)>=1e5),
   MS("free","Out of the Rat Race","Passive income beats your expenses",p=>fast(p)),
   MS("ftbiz","Big leagues","Buy a Fast Track business",p=>(p.ftBiz||[]).length>=1),
   MS("nw1m","Millionaire","Reach $1,000,000 net worth",p=>netWorth(p)>=1e6),
@@ -1552,7 +1558,7 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
 }
 function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792085958";
+const BUILD="1792087622";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
@@ -1720,7 +1726,7 @@ function ledgerHTML(v){
     <div class="sh">Expenses</div>${exps.map(([l,x])=>row(l,fmt(x))).join("")}${row("Total expenses",fmt(ex),"total")}
     ${row("Monthly cash flow",(cf>=0?"+":"")+fmt(cf),"total")}</div>
   <div class="lsec"><div class="lt"><span>Balance sheet</span><span>cash flow</span></div>
-    <div class="sh">Assets</div>${assets}<div class="sh">Liabilities</div>${liab}${row("Net worth",fmt(netWorth(v)),"total")}</div>
+    <div class="sh">Assets</div>${homeValue(v)?row(`Your home <small>(you live in it, it earns nothing)</small>`,fmt(homeValue(v))):""}${assets}<div class="sh">Liabilities</div>${liab}${row("Net worth",fmt(netWorth(v)),"total")}</div>
   ${mine?`<div class="lsec inl"><button class="btn primary" data-a="trade">Stock market</button><button class="btn" data-a="bank">Bank: loans & debts</button></div>`:""}
   ${logHTML}`;
 }
