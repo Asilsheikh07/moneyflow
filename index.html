@@ -690,7 +690,7 @@ function goldCard(){return {kind:"gold",price:Math.round((2800+Math.random()*160
 const BOT_NAMES=["Ava","Leo","Mia","Noah","Zoe","Kai"];
 
 /* photos: drop files into img/<key>.jpg and list the key here; cards fall back to a styled header without one */
-const IMAGES=new Set("atm baby billboard bitcoin carrepair carshare carwash charity coffee complex condo container crash daycare dental dentist downsized duplex ethereum fixer foodtruck fund gold gym handshake homerepair hotel house21 house32 land laptop laundromat lifestyle loan medical opportunity payday phone plex12 plex4 plex8 recession roof solar stocks storage tourism tutoring tv vacancy vacation vending vet website wedding".split(" "));
+const IMAGES=new Set("atm baby bank billboard bitcoin carrepair carshare carwash charity coffee complex condo container course crash daycare dental dentist downsized duplex ethereum fixer foodtruck fund gold gym gymmember handshake homerepair hotel house21 house32 land laptop laundromat lifestyle loan medical opportunity party payday phone plex12 plex4 plex8 recession roof solar stocks storage ticket tourism tutoring tv vacancy vacation vending vet washer website wedding".split(" "));
 const IMG_BY_TITLE={"Condo 2BR/1BA":"condo","House 2BR/1BA":"house21","House 3BR/2BA":"house32","Fixer-upper 3BR/2BA":"fixer","Duplex":"duplex","Vending machines":"vending","Laundromat stake":"laundromat","ATM machine":"atm","Used food truck":"foodtruck","Car-share vehicle":"carshare","Niche website":"website","Billboard lease":"billboard","Storage container":"container","Land, 10 acres":"land","Professional certification":"course","Certificate of deposit":"bank",
   "4-plex":"plex4","8-plex":"plex8","12-unit apartment building":"plex12","24-unit apartment complex":"complex","Car wash":"carwash","Daycare center":"daycare","Coffee franchise":"coffee","Dental clinic":"dental","Gym franchise":"gym","Tutoring center":"tutoring","Self-storage facility":"storage","Boutique hotel":"hotel","Solar farm":"solar",
   "New smartphone":"phone","Friend's wedding":"wedding","Car repair":"carrepair","Dentist":"dentist","Family vacation":"vacation","Washing machine":"washer","Unpaid loan":"loan","Speeding ticket":"ticket","Big-screen TV":"tv","Birthday party":"party","Medical bill":"medical","New laptop":"laptop","Vet bill":"vet","Home repair":"homerepair","Lifestyle creep":"lifestyle","Gym membership":"gymmember"};
@@ -1543,7 +1543,7 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
 }
 function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792066624";
+const BUILD="1792083771";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
