@@ -197,6 +197,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 @keyframes burst{from{opacity:1;scale:.3}to{opacity:0;scale:1.7}}
 .herocard{display:flex;gap:12px;align-items:center}
 .herocard img{width:64px;height:100px;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6));flex:none}
+.langs{flex-wrap:wrap}
 .qchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .qchip{border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);border-radius:999px;padding:7px 12px;font:700 13px var(--f-mono);cursor:pointer}
 .qchip:active{background:var(--gold);color:var(--gold-ink)}
@@ -409,6 +410,58 @@ const r10=x=>Math.round(x/10)*10, rk=x=>Math.round(x/1000)*1000, up1k=x=>Math.ce
 const PCOL=["var(--p1)","var(--p2)","var(--p3)","var(--p4)"];
 let prefs=Object.assign({fx:true,fast:false,sound:true},store.get(PREF,{}));
 const savePrefs=()=>store.set(PREF,prefs);
+/* ================= languages =================
+   The code stays in English. Each device translates what it shows into the player's language,
+   so in one online room every player can read the game in their own language.
+   lang/<code>.json = {exact:{"English":"…"}, wild:{"{p} bought {a} ({m} down)":"…"}}.
+   exact keys may hold {0},{1}…: numbers, money and player names cut out of the English line.
+   wild keys: {p},{q} a name, {m},{n},{o} an amount, {a},{b},{c} any text that is translated on its own. */
+const LANGS={en:"English",de:"Deutsch",uz:"O‘zbekcha",ru:"Русский"};
+const LANG=LANGS[prefs.lang]?prefs.lang:(prefs.lang=({de:"de",ru:"ru",uz:"uz"})[(navigator.language||"en").slice(0,2)]||"en");
+let DICT=null,WILD=[],LOWER=null;
+const reEsc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+function nameList(){const n=new Set();G?.players.forEach(p=>n.add(p.name));ONLINE?.room?.seats?.forEach(x=>n.add(x.name));const k=store.get(NICK,"");if(k)n.add(k);
+  return [...n].filter(x=>x&&x.length>1).sort((a,b)=>b.length-a.length);}
+function normKey(s,vals){
+  const names=nameList().map(reEsc).join("|");
+  const re=new RegExp(`${names?`(?<![\\p{L}\\d])(?:${names})(?![\\p{L}\\d])|`:""}[−-]?\\+?[−-]?\\$[\\d,]+(?:\\.\\d+)?[kM]?|[+−-]?\\d[\\d,]*(?:\\.\\d+)?%?`,"gu");
+  return s.replace(re,m=>`{${vals.push(m)-1}}`);
+}
+function trTerm(x){
+  if(!x)return x;const d=DICT[x]??DICT[x[0].toUpperCase()+x.slice(1)];
+  if(d!=null)return LANG!=="de"&&x[0]===x[0].toLowerCase()&&x[0]!==x[0].toUpperCase()?d[0].toLowerCase()+d.slice(1):d; // German nouns keep their capital
+  return LOWER?.[x.toLowerCase()]??tr(x);
+}
+function tr(s){
+  if(!DICT||s==null)return s;
+  const core=s.trim();if(!core||!/[A-Za-z]/.test(core))return s;
+  let out=DICT[core];
+  if(out==null){const vals=[],key=normKey(core,vals);let t=DICT[key];
+    if(t!=null)out=t.replace(/\{(\d+)\}/g,(_,i)=>vals[+i]??"");
+    else for(const [re,tgt] of WILD){const m=core.match(re);if(m){out=tgt.replace(/\{([a-cm-q])\}/g,(_,c)=>"abc".includes(c)?trTerm(m.groups[c]):m.groups[c]);break;}}
+    if(out==null&&core.includes(" · "))out=core.split(" · ").map(x=>tr(x)).join(" · "); // result lines joined in one toast
+  }
+  return out==null?s:s.slice(0,s.indexOf(core[0]))+out+s.slice(s.lastIndexOf(core[core.length-1])+1);
+}
+const TR_DONE=new WeakMap(),TR_ATTRS=["placeholder","title","aria-label","alt"];
+function trTree(root){
+  if(!DICT)return;
+  if(root.nodeType===3){if(TR_DONE.get(root)!==root.data){const t=tr(root.data);if(t!==root.data)root.data=t;TR_DONE.set(root,root.data);}return;}
+  if(root.nodeType!==1||root.closest?.("script,style"))return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT);let n=w.currentNode;
+  while(n){if(n.nodeType===3)trTree(n);else for(const a of TR_ATTRS)if(n.hasAttribute?.(a)){const v=n.getAttribute(a),t=tr(v);if(t!==v)n.setAttribute(a,t);}n=w.nextNode();}
+}
+if(LANG!=="en")fetch(`lang/${LANG}.json`,{cache:"no-cache"}).then(r=>r.json()).then(d=>{
+  DICT=d.exact;LOWER=Object.fromEntries(Object.entries(d.exact).map(([k,v])=>[k.toLowerCase(),v]));
+  const AMT="[−+-]?[−+-]?\\$?[\\d,]+(?:\\.\\d+)?[kM%]?";
+  WILD=Object.entries(d.wild||{}).map(([k,v])=>[new RegExp("^"+reEsc(k).replace(/\\\{([a-cm-q])\\\}/g,(_,t)=>`(?<${t}>${"mno".includes(t)?AMT:".+?"})`)+"$","u"),v]);
+  document.documentElement.lang=LANG;trTree(document.body);document.title=tr(document.title);
+  new MutationObserver(ms=>ms.forEach(m=>{if(m.type==="characterData")trTree(m.target);
+    else if(m.type==="attributes"){const v=m.target.getAttribute(m.attributeName),t=tr(v);if(t!==v)m.target.setAttribute(m.attributeName,t);}
+    else m.addedNodes.forEach(trTree);})).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:TR_ATTRS});
+}).catch(()=>{});
+const langPicker=()=>`<div class="seg langs" role="group" aria-label="Language">${Object.entries(LANGS).map(([k,v])=>`<button data-lang="${k}" class="${LANG===k?"on":""}" aria-pressed="${LANG===k}">${v}</button>`).join("")}</div>`;
+
 
 /* ================= sound (synthesized) ================= */
 let AC=null;
@@ -759,7 +812,8 @@ function bankrupt(p){
   G.bkNote={pid:p.id,out:p.out};
 }
 function enterFastTrack(p){
-  p.track="fast";p.pos=0;p.ftIncome=Math.round(passive(p)*24); // a CASHFLOW Day pays two years of passive incomep.ftBase=p.ftIncome;p.ftTarget=Math.round(p.ftIncome*1.5);p.cash=p.ftIncome;p.ftCharity=false;p.charity=0;
+  p.track="fast";p.pos=0;p.ftIncome=Math.round(passive(p)*24); // a CASHFLOW Day pays two years of passive income
+  p.ftBase=p.ftIncome;p.ftTarget=Math.round(p.ftIncome*1.5);p.cash=p.ftIncome;p.ftCharity=false;p.charity=0;
   log(`${p.name} escaped the Matrix! CASHFLOW Day income: ${fmt(p.ftIncome)}`,p.id);
   const s=store.get(STATS,{played:0,wins:[],escapes:[]});(s.escapes=s.escapes||[]).push({name:p.name,prof:p.prof,bot:p.bot,months:p.months,date:new Date().toISOString().slice(0,10)});store.set(STATS,s);
 }
@@ -1283,7 +1337,7 @@ function handleFast(p){
       const dr=DREAMS[idx];
       if(p.dream===idx){const price=dreamPrice(p);
         return box(dr.name,`<p>This is your Dream. ${dr.text}</p>${facts([["Price",fmt(price)],["Your cash",fmt(p.cash)]])}${p.cash<price?`<div class="why">Not enough cash yet. Keep collecting CASHFLOW Days.</div>`:""}`,"#d9a441",
-          [{label:"Buy my Dream",primary:1,disabled:p.cash<price,fn:()=>{p.cash-=price;log(`${p.name} bought their Dream: ${dr.name}`);declareWinner(p,`bought their Dream, ${dr.name}`);done();}},{label:"Not yet",fn:done}],()=>p.cash>=price?0:1);}
+          [{label:"Buy my Dream",primary:1,disabled:p.cash<price,fn:()=>{p.cash-=price;p.dreamBought=1;log(`${p.name} bought their Dream: ${dr.name}`);declareWinner(p,`bought their Dream, ${dr.name}`);done();}},{label:"Not yet",fn:done}],()=>p.cash>=price?0:1);}
       const owners=G.players.filter(q=>q.dream===idx&&q!==p);
       if(owners.length){(G.dreamBump=G.dreamBump||{})[idx]=(G.dreamBump[idx]||0)+1;log(`${p.name} landed on ${dr.name}: its price rose 100% for ${owners.map(q=>q.name).join(", ")}`);}
       return box(dr.name,`<p>${owners.length?`This is ${owners.map(q=>esc(q.name)).join(" and ")}'s Dream. Landing here raises its price for them by 100% of the original: now ${fmt(DREAMS[idx].price*(1+(G.dreamBump[idx]||0)))}.`:"Nobody chose this Dream."}</p>`);
@@ -1367,7 +1421,7 @@ const MISSIONS=[
   MS("free","Out of the Rat Race","Passive income beats your expenses",p=>fast(p)),
   MS("ftbiz","Big leagues","Buy a Fast Track business",p=>(p.ftBiz||[]).length>=1),
   MS("nw1m","Millionaire","Reach $1,000,000 net worth",p=>netWorth(p)>=1e6),
-  MS("dream","Dream come true","Buy your Dream",p=>!!p.won),
+  MS("dream","Dream come true","Buy your Dream",p=>!!p.dreamBought),
 ];
 // a new look comes from missions OR from cash on hand, whichever is first; it never goes back down
 const LV_M=[0,3,6,10,13,16,19],LV_C=[0,25000,75000,200000,500000,1500000,5000000];
@@ -1489,7 +1543,7 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
 }
 function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792010067";
+const BUILD="1792066624";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
@@ -1533,7 +1587,7 @@ function render(){
   else if(route==="settings")v.innerHTML=settingsHTML();
   else if(route==="empire")v.innerHTML=empireHTML();
   else v.innerHTML=G?playHTML():ONLINE?lobbyHTML():setupHTML();
-  document.title=route==="play"&&G?`${cur().name} · Risk Road`:"Risk Road";
+  document.title=tr(route==="play"&&G?`${cur().name} · Risk Road`:"Risk Road");
   document.body.classList.toggle("ingame",route==="play"&&!!G);
   if(route==="play"&&G){
     document.querySelectorAll(".cube").forEach((c,i)=>{const [x,y]=FACES[G.dice[i]||1];c.style.transition="none";c.style.transform=`rotateX(${x+360*(spins[i]||0)}deg) rotateY(${y+360*(spins[i]||0)}deg)`;void c.offsetWidth;c.style.transition="";});
@@ -1547,7 +1601,7 @@ function homeHTML(){
   return `<section class="hero">
     <div><div class="eyebrow">The board game of financial freedom</div><h1>Risk Road</h1><div class="sub">Get out of the rat race.</div>
       <p>Start with a real job, taxes, a mortgage and loans. Draw deals, buy homes and apartment buildings, run businesses, trade stocks. When passive income beats your expenses, you reach the Fast Track. Buy your Dream to win.</p>
-      <div class="ctas">${G?`<button class="btn primary big" data-route="play">Continue game</button><button class="btn big" data-go="new">${confirmKey==="abandon"?"Click again to start over":"New game"}</button>`:`<button class="btn primary big" data-route="play">New game</button>`}<button class="btn big" data-route="guide">Rules</button></div></div>
+      <div class="ctas">${G?`<button class="btn primary big" data-route="play">Continue game</button><button class="btn big" data-go="new">${confirmKey==="abandon"?"Click again to start over":"New game"}</button>`:`<button class="btn primary big" data-route="play">New game</button>`}<button class="btn big" data-route="guide">Rules</button></div><div style="margin-top:16px">${langPicker()}</div></div>
     <div class="preview" aria-hidden="true">${boardHTML(null,"rat")}</div>
   </section>
   <div class="tiles">
@@ -1718,6 +1772,7 @@ function settingsHTML(){
   const seg=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-pref="${key}" data-val="${v}" class="${prefs[key]===v?"on":""}" aria-pressed="${prefs[key]===v}">${l}</button>`).join("")}</div>`;
   return `<div class="eyebrow">Settings</div><h1 style="font-size:40px;margin:4px 0 16px">Settings</h1>
   <div class="card" style="max-width:640px">
+    <div class="switch"><div><b>Language</b><div class="muted" style="font-size:13px">Each player can choose their own</div></div>${langPicker()}</div>
     <div class="switch"><div><b>Sound</b><div class="muted" style="font-size:13px">Dice, coins, cards and wins</div></div>${seg("sound",[[true,"On"],[false,"Off"]])}</div>
     <div class="switch"><div><b>3D board</b><div class="muted" style="font-size:13px">Tilted board with 3D pieces and dice</div></div>${seg("fx",[[true,"On"],[false,"Off"]])}</div>
     <div class="switch"><div><b>Game speed</b><div class="muted" style="font-size:13px">Also speeds up bot turns</div></div>${seg("fast",[[false,"Normal"],[true,"Fast"]])}</div>
@@ -1983,6 +2038,7 @@ document.addEventListener("click",e=>{
   if(b.dataset.np){syncDraft();draft.n=+b.dataset.np;render();return;}
   if(b.dataset.pref){prefs[b.dataset.pref]=b.dataset.val==="true";savePrefs();render();return;}
   if(b.dataset.view!=null){VIEW=+b.dataset.view;render();return;}
+  if(b.dataset.lang){prefs.lang=b.dataset.lang;savePrefs();location.reload();return;}
   if(b.dataset.look){const p=G.players[+b.dataset.pid];if(p&&canSellFor(p))setLook(p,+b.dataset.look);return;}
   if(b.dataset.osell){const p=G.players[+b.dataset.pid],a=p?.assets.find(x=>x.id===b.dataset.osell);if(!a||!offerActive()||!canSellFor(p))return;
     if(ONLINE&&!isActor())return sendIntent(a);
