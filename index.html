@@ -138,7 +138,8 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0
 .center .brand{grid-column:1/3;text-align:center;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:clamp(16px,4vw,46px);background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent;transform:translateZ(1px);line-height:1.05;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 .deck{position:relative;transform-style:preserve-3d;min-height:0}
 .deck i{position:absolute;inset:0;border-radius:8px;background:#f2ead8;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
-.deck i:last-child{background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.55)),repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 4px,transparent 4px 8px),var(--dk);box-shadow:inset 0 0 0 1.5px var(--gold-hi),inset 0 0 0 4px var(--dk),inset 0 0 0 5px rgba(255,255,255,.45),0 3px 6px rgba(0,0,0,.4);
+/* top card of each deck: a real photo with the deck colour as a tint and frame */
+.deck i:last-child{background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.78)),var(--dimg) center/cover,var(--dk);text-shadow:0 1px 3px rgba(0,0,0,.8);box-shadow:inset 0 0 0 1.5px var(--gold-hi),inset 0 0 0 4px var(--dk),inset 0 0 0 5px rgba(255,255,255,.45),0 3px 6px rgba(0,0,0,.4);
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-family:var(--f-display);font-weight:700;font-size:clamp(6.5px,1.15vw,13px);text-align:center;padding:6px 4px;color:#fff;line-height:1.1}
 .deck i:last-child small{font-family:var(--f-mono);font-weight:400;font-size:.75em;opacity:.85;margin-top:3px}
 .deck.drawn i:last-child{animation:lift .6s ease-out}
@@ -678,7 +679,7 @@ const MARKET=[
  ()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>stockCard(),()=>cryptoCard(),()=>goldCard(),
 ];
 const DECKS={small:SMALL,big:BIG,market:MARKET,doodad:DOODADS};
-const DECK_INFO={small:{name:"Small Deals",color:"#1f8a5b",icon:"opp"},big:{name:"Big Deals",color:"#2a5bd7",icon:"big"},market:{name:"Market",color:"#c48a12",icon:"market"},doodad:{name:"Doodads",color:"#c4456a",icon:"doodad"}};
+const DECK_INFO={small:{name:"Small Deals",color:"#1f8a5b",icon:"opp",img:"house32"},big:{name:"Big Deals",color:"#2a5bd7",icon:"big",img:"complex"},market:{name:"Market",color:"#c48a12",icon:"market",img:"stocks"},doodad:{name:"Doodads",color:"#c4456a",icon:"doodad",img:"lifestyle"}};
 const TICKERS={NOVA:{name:"Novatek Robotics",base:20},GRNR:{name:"GreenRiver Energy",base:35},BLUC:{name:"BlueCart Retail",base:8},MEDX:{name:"Medexa Labs",base:14},DIVY:{name:"Dividend Income Fund",base:50,div:.175},
   AERO:{name:"SkyLine Airways",base:18},CHIP:{name:"Quantix Chips",base:120},VOLT:{name:"VoltDrive EV",base:45},PHRM:{name:"Helix Pharma",base:60},FOOD:{name:"Harvest Foods",base:30},PLAY:{name:"PixelPlay Games",base:25},
   BTC:{name:"Bitcoin",base:65000,crypto:1},ETH:{name:"Ethereum",base:3200,crypto:1},SOL:{name:"Solana",base:150,crypto:1},DOGE:{name:"Dogecoin",base:.15,crypto:1},TMIX:{name:"Total Market Index Fund",base:100,div:.25}};
@@ -1543,7 +1544,7 @@ function modal({kicker,icon,title,body,actions,tone,onBody,bot,silent}){
 }
 function closeModal(){$("#overlay").hidden=true;botBusy=false;}
 // phones keep old tabs open for days: notice a newer deploy and offer a one-tap update
-const BUILD="1792083771";
+const BUILD="1792084694";
 function checkUpdate(){
   if(BUILD==="dev"||document.hidden)return;
   fetch(location.pathname,{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const BUILD="([^"]+)"/);
@@ -1575,7 +1576,7 @@ function boardHTML(g,track){
     const price=ft&&t==="ftbiz"?`<div class="price">${fmt(FT_BIZ[idx].price)}</div>`:ft&&t==="dream"?`<div class="price">${fmt(DREAMS[idx].price)}</div>`:"";
     return `<div data-i="${i}" class="cell ${t==="pay"||t==="cfday"?"pay":t}${i%6===0?" corner":""}${own!=null&&own!==undefined?" owned":""}${cp&&cp.pos===i&&(cp.track||"rat")===track?" here":""}" style="grid-row:${r};grid-column:${col};--tc:${s.color};${own!=null?`--owner:${PCOL[own]}`:""}" title="${esc(label)}">${svg(s.icon)}<div class="lbl">${esc(label)}</div>${price}</div>`;}).join("");
   const center=ft?`<div class="brand">Fast Track</div><div class="ftinfo"><div>Win by buying <b>your Dream</b></div><div>or growing your CASHFLOW Day income by <b>50%</b></div><div style="opacity:.75">No bank loans here. Audits, lawsuits and divorce take your cash.</div></div>`
-    :`<div class="brand">Risk Road</div>${Object.entries(DECK_INFO).map(([k,v])=>`<div class="deck" data-deck="${k}" style="--dk:${v.color}">${stack(7,2,`${v.name}<small>${g?g.decks[k].length:DECKS[k].length} cards</small>`)}</div>`).join("")}`;
+    :`<div class="brand">Risk Road</div>${Object.entries(DECK_INFO).map(([k,v])=>`<div class="deck" data-deck="${k}" style="--dk:${v.color};--dimg:url(img/${v.img}.jpg)">${stack(7,2,`${v.name}<small>${g?g.decks[k].length:DECKS[k].length} cards</small>`)}</div>`).join("")}`;
   return `<div class="board${ft?" ft":""}">${html}<div class="center">${center}</div><div class="heroes"></div></div>`;
 }
 function render(){
